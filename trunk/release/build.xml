@@ -1,0 +1,379 @@
+<?xml version="1.0" ?>
+<project name="OpenIntents-Release" default="help">
+
+	<!-- 
+	    ==============================================================
+	    Use this Ant script to build the complete release.
+	    
+	    Targets:
+	    - "release": the full openintents release, 
+	       binary + source + javadoc.
+	    - "release-zip": create release zip-files, 
+	      binary + source + javadoc.
+	    ==============================================================
+	    
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		To run the release script directly in Eclipse:
+		
+		* In the Package Explorer, open the project OpenIntents
+		* Right-click on "build-release.xml" / "Run As" / 
+		  "2 Ant Build..."
+		* Check targets to execute: "release-zip"
+		* Click "Run"
+		
+		The release files and corresponding zip files are created in 
+		OpenIntents/release.
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		
+	-->
+	
+	<!-- Read properties from OpenIntents property file -->
+	<property file="build.properties" />
+	<property file="${build.properties.dir}/build.properties" />
+			
+	<!-- Base name of the release files -->
+	<property name="binary-name" value="openintents-binary-${version}" />
+	<property name="source-name" value="openintents-source-${version}" />
+	<property name="javadoc-name" value="openintents-javadoc-${version}" />
+		
+	<!-- release dir: this is where all the completed files go -->
+	<property name="release-dir" value="release" />
+	<property name="binary-dir" value="${release-dir}/${binary-name}" />
+	<property name="source-dir" value="${release-dir}/${source-name}" />
+	<property name="javadoc-dir" value="${release-dir}/${javadoc-name}" />
+		
+	<!-- subdirectories in the release-dir -->
+	<property name="binary-lib-dir" value="${binary-dir}/lib" />
+	<property name="binary-samples-dir" value="${binary-dir}/samples" />
+	<property name="binary-tools-dir" value="${binary-dir}/tools" />
+	<property name="source-lib-dir" value="${source-dir}/lib" />
+						
+	<!-- (sub)project folders  -->
+	<property name="base-dir" value="${build.properties.dir}" />
+	<property name="buildrelease-dir" value="." />
+	<property name="lib-dir" value="../lib" />
+	<property name="favoritelocations-dir" value="../samples/FavoriteLocations" />
+	<property name="apidemossensors-dir" value="../samples/ApiDemosSensors" />
+	<property name="openglsensors-dir" value="../samples/OpenGLSensors" />
+	<property name="presentpicker-dir" value="../samples/PresentPicker" />
+	<property name="sensorsimulator-dir" value="../tools/SensorSimulator" />
+	<property name="thisrelease-dir" value="." />
+	
+	<!-- standard lib file -->
+	<property name="binary-lib-file" value="${binary-lib-dir}/openintents-lib.jar" />
+		
+	<!-- JavaDoc subdirectory -->
+	<property name="doc-dir" value="doc" />
+	<property name="javadoc-top-dir" value="javadoc-top" />
+	
+	<target
+		name="help"
+		>
+		<echo>----------openintents.org buildscript ${version}</echo>
+		<echo>use release for a full openintents release.</echo>
+		<echo>use release-zip for creating release zip-files.</echo>
+
+	</target>
+
+	<!-- delete release directory and set up structure -->
+	<target name="setup.dirs">
+		<delete dir="${release-dir}"/>
+		<mkdir dir="${release-dir}"/>
+		<mkdir dir="${binary-dir}"/>
+		<mkdir dir="${binary-lib-dir}"/>
+		<mkdir dir="${binary-samples-dir}"/>
+		<mkdir dir="${binary-tools-dir}"/>
+		<mkdir dir="${source-dir}"/>
+		<mkdir dir="${source-lib-dir}"/>
+		<mkdir dir="${javadoc-dir}"/>
+		
+		<!-- Now copy global readme files -->
+		<copy 
+			file="${base-dir}/readme_OpenIntents.txt" 
+			todir="${binary-dir}" />
+		<copy 
+			file="../readme_binary.txt" 
+			tofile="${binary-dir}/readme.txt" />
+		<copy 
+			file="../readme_source.txt" 
+			tofile="${source-dir}/readme_source.txt" />
+		<copy 
+			file="../readme_binary.txt" 
+			tofile="${source-dir}/readme_binary.txt" />
+
+		<!-- Copy the source files -->
+		<copy todir="${source-dir}/openintents">
+		    <fileset dir="${base-dir}">
+		    	<exclude name="**/bin/**" />
+		    	<exclude name="**/doc/**" />
+		    	<exclude name="**/doc-lib/**" />
+		    	<exclude name="**/release/**" />
+	    		<exclude name="**/.svn" />
+		    </fileset>
+		</copy>
+		
+		<!-- Copy the build-release files -->
+		<copy todir="${source-dir}/release">
+		    <fileset dir="${buildrelease-dir}">
+	    		<exclude name="**/release/**" />
+	    		<exclude name="**/.svn" />
+		    </fileset>
+		</copy>
+		
+		<!-- Copy standard JavaDoc top files -->
+		<copy todir="${javadoc-dir}">
+			<fileset dir="${javadoc-top-dir}">
+				<exclude name="**/Thumbs.db" />
+		    	<exclude name="**/.svn" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target 
+		name="OpenIntents"		
+		depends="setup.dirs"
+		>
+		<echo>------------------------------OpenIntents + lib----------------------</echo>
+		<ant
+			dir="${base-dir}"
+			antfile="build.xml"
+			target="all"
+		/>
+		<copy
+			file="${base-dir}/bin/OpenIntents.apk"
+			todir="${binary-dir}"
+			/>
+		<!-- Copy lib to lib dir -->
+		<copy
+			file="${base-dir}/bin/openintents-lib.jar"
+			todir="${lib-dir}"
+			/>
+		<!-- Copy lib to binary release -->
+		<copy
+			file="${base-dir}/bin/openintents-lib.jar"
+			tofile="${binary-lib-file}"
+			/>
+		<copy
+			file="${lib-dir}/readme.txt"
+			todir="${binary-lib-dir}"
+			/>
+		<!-- Copy lib to source release -->
+		<!--
+		<copy todir="${source-lib-dir}">
+			<fileset dir=".">
+				<include name="${base-dir}/bin/openintents-lib.jar" />
+				<include name="${lib-dir}/readme.txt" />
+				<include name="${lib-dir}/readme_source.txt" />
+			</fileset>
+		</copy>
+		-->
+		<copy
+			file="${base-dir}/bin/openintents-lib.jar"
+			todir="${source-lib-dir}"
+			/>
+		<copy
+			file="${lib-dir}/readme.txt"
+			todir="${source-lib-dir}"
+			/>
+		<copy
+			file="${lib-dir}/readme_source.txt"
+			todir="${source-lib-dir}"
+			/>
+		<!-- Copy to javadoc release -->
+		<copy todir="${javadoc-dir}/openintents">
+			<fileset dir="${base-dir}/${doc-dir}">
+				<exclude name="**/.svn" />
+			</fileset>
+		</copy>
+		<!-- Copy to javadoc-lib release -->
+		<copy todir="${javadoc-dir}/lib">
+			<fileset dir="${base-dir}/doc-lib">
+				<exclude name="**/.svn" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="ApiDemosSensors"
+		depends="OpenIntents"
+		>
+		<echo>------------------------------ApiDemosSensors----------------------</echo>
+		<!-- Use most recent lib file -->
+		<mkdir dir="${apidemossensors-dir}/lib"/>
+		<copy
+			file="${binary-lib-file}"
+			todir="${apidemossensors-dir}/lib"
+			/>
+		<!-- Compile -->
+		<ant
+			dir="${apidemossensors-dir}"
+			antfile="build.xml"
+			target="all"
+			>
+		</ant>
+		<!-- Copy to binary release -->
+		<copy todir="${binary-samples-dir}" flatten="true">
+			<fileset dir="${apidemossensors-dir}">
+				<include name="bin/ApiDemosSensors.apk" />
+				<include name="readme_ApiDemosSensors.txt" />				
+			</fileset>
+		</copy>
+		<!-- Copy to source release -->
+		<copy todir="${source-dir}/samples/ApiDemosSensors">
+		    <fileset dir="${apidemossensors-dir}">
+		    	<exclude name="**/bin/**" />
+		    	<exclude name="**/doc/**" />
+	    		<exclude name="**/.svn" />
+		    </fileset>
+		</copy>
+		<!-- Copy to javadoc release -->
+		<copy todir="${javadoc-dir}/samples/ApiDemosSensors">
+			<fileset dir="${apidemossensors-dir}/${doc-dir}">
+				<exclude name="**/.svn" />
+			</fileset>
+		</copy>
+	</target>	
+	
+	<target name="OpenGLSensors"
+		depends="OpenIntents"
+		>
+		<echo>------------------------------OpenGLSensors----------------------</echo>
+		<!-- Use most recent lib file -->
+		<mkdir dir="${openglsensors-dir}/lib"/>
+		<copy
+			file="${binary-lib-file}"
+			todir="${openglsensors-dir}/lib"
+			/>
+		<!-- Compile -->
+		<ant
+			dir="${openglsensors-dir}"
+			antfile="build.xml"
+			target="all"
+			>
+		</ant>
+		<!-- Copy to binary release -->
+		<copy todir="${binary-samples-dir}" flatten="true">
+			<fileset dir="${openglsensors-dir}">
+				<include name="bin/OpenGLSensors.apk" />
+				<include name="readme_OpenGLSensors.txt" />				
+			</fileset>
+		</copy>
+		<!-- Copy to source release -->
+		<copy todir="${source-dir}/samples/OpenGLSensors">
+		    <fileset dir="${openglsensors-dir}">
+		    	<exclude name="**/bin/**" />
+		    	<exclude name="**/doc/**" />
+	    		<exclude name="**/.svn" />
+		    </fileset>
+		</copy>
+		<!-- Copy to javadoc release -->
+		<copy todir="${javadoc-dir}/samples/OpenGLSensors">
+			<fileset dir="${openglsensors-dir}/${doc-dir}">
+				<exclude name="**/.svn" />
+			</fileset>
+		</copy>
+	</target>	
+
+
+	<target name="PresentPicker"
+		depends="OpenIntents"
+		>
+		<echo>------------------------------PresentPicker----------------------</echo>
+		<!-- Use most recent lib file -->
+		<mkdir dir="${presentpicker-dir}/lib"/>
+		<copy
+			file="${binary-lib-file}"
+			todir="${presentpicker-dir}/lib"
+			/>
+		<!-- Compile -->
+		<ant
+			dir="${presentpicker-dir}"
+			antfile="build.xml"
+			target="all"
+			>
+		</ant>
+		<!-- Copy to binary release -->
+		<copy todir="${binary-samples-dir}" flatten="true">
+			<fileset dir="${presentpicker-dir}">
+				<include name="bin/PresentPicker.apk" />
+				<include name="readme_PresentPicker.txt" />				
+			</fileset>
+		</copy>
+		<!-- Copy to source release -->
+		<copy todir="${source-dir}/samples/PresentPicker">
+		    <fileset dir="${presentpicker-dir}">
+		    	<exclude name="**/bin/**" />
+		    	<exclude name="**/doc/**" />
+	    		<exclude name="**/.svn" />
+		    </fileset>
+		</copy>
+		<!-- Copy to javadoc release -->
+		<copy todir="${javadoc-dir}/samples/PresentPicker">
+			<fileset dir="${presentpicker-dir}/${doc-dir}">
+				<exclude name="**/.svn" />
+			</fileset>
+		</copy>
+	</target>
+	
+
+
+	<target name="SensorSimulator">
+		<echo>------------------------------SensorSimulator----------------------</echo>
+		<!-- Compile -->
+		<ant
+			dir="${sensorsimulator-dir}"
+			antfile="build.xml"
+			target="all"
+			>
+		</ant>
+		<!-- Copy to binary release -->
+		<copy todir="${binary-tools-dir}" flatten="true">
+			<fileset dir="${sensorsimulator-dir}">
+				<include name="bin/sensorsimulator.jar" />
+				<include name="readme_SensorSimulator.txt" />				
+			</fileset>
+		</copy>
+		<!-- Copy to source release -->
+		<copy todir="${source-dir}/tools/SensorSimulator">
+		    <fileset dir="${sensorsimulator-dir}">
+		    	<exclude name="**/bin/**" />
+		    	<exclude name="**/doc/**" />
+	    		<exclude name="**/.svn" />
+		    </fileset>
+		</copy>
+		<!-- Copy to javadoc release -->
+		<copy todir="${javadoc-dir}/tools/SensorSimulator">
+			<fileset dir="${sensorsimulator-dir}/${doc-dir}">
+				<exclude name="**/.svn" />
+			</fileset>
+		</copy>
+	</target>	
+
+	<!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+	<!-- Release -->
+	<!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+	<target
+		name="release"		
+		depends="
+			ApiDemosSensors,
+			OpenGLSensors,
+			PresentPicker,
+			SensorSimulator"
+		>
+	</target>
+
+	<!-- Zip the release directories -->
+	<target 
+		name="release-zip"
+		depends="release">
+		<echo>------------------------------Zipping files----------------------</echo>
+		<zip destfile="${binary-dir}.zip">
+			<zipfileset dir="${binary-dir}" prefix="${binary-name}"/>
+		</zip>
+		<zip destfile="${source-dir}.zip">
+			<zipfileset dir="${source-dir}" prefix="${source-name}"/>
+		</zip>
+		<zip destfile="${javadoc-dir}.zip">
+			<zipfileset dir="${javadoc-dir}" prefix="${javadoc-name}"/>
+		</zip>
+	</target>
+</project>

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+	* Copyright (C) 2008 OpenIntents.org
+	*
+	* Licensed under the Apache License, Version 2.0 (the "License");
+	* you may not use this file except in compliance with the License.
+	* You may obtain a copy of the License at
+	*
+	*      http://www.apache.org/licenses/LICENSE-2.0
+	*
+	* Unless required by applicable law or agreed to in writing, software
+	* distributed under the License is distributed on an "AS IS" BASIS,
+	* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	* See the License for the specific language governing permissions and
+	* limitations under the License.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+      package="org.openintents.countdown"
+      android:versionCode="10001"
+      android:versionName="1.0.1">
+      
+    <!-- required for notifications -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    
+    <application android:icon="@drawable/icon_hourglass" android:label="@string/app_name">
+        <provider android:name=".db.CountdownProvider"
+            android:authorities="org.openintents.countdown"
+        />
+    
+        <receiver android:name=".AlarmReceiver" android:process=":remote" />
+        
+        <receiver android:name=".AlarmCancelReceiver" android:process=":remote" />
+        
+        <activity android:name=".list.CountdownListActivity" 
+        	android:icon="@drawable/icon_hourglass" 
+        	android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.EDIT" />
+                <action android:name="android.intent.action.PICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/vnd.openintents.countdown.duration" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.GET_CONTENT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/vnd.openintents.countdown.duration" />
+            </intent-filter>
+        </activity>
+        
+        <activity android:name="CountdownEditorActivity"
+            android:icon="@drawable/icon_hourglass" 
+        	android:label="@string/title_setcountdown"
+        >
+            <!-- This filter says that we can view or edit the data of
+                 a single note -->
+            <intent-filter android:label="@string/menu_edit">
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/vnd.openintents.countdown.duration" />
+            </intent-filter>
+
+            <!-- This filter says that we can create a new note inside
+                 of a directory of notes. -->
+            <intent-filter>
+                <action android:name="android.intent.action.INSERT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/vnd.openintents.countdown.duration" />
+            </intent-filter>
+
+        </activity>
+         
+         
+        <activity android:name="NotificationReceiverActivity"
+            android:icon="@drawable/icon_hourglass" 
+        	android:label="@string/title_setcountdown"
+        >
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/vnd.openintents.countdown.duration" />
+            </intent-filter>
+            <!-- This filter says that we can view or edit the data of
+                 a single note -->
+            <!-- <intent-filter android:label="@string/menu_edit">
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/vnd.openintents.countdown.duration" />
+            </intent-filter> -->
+
+        </activity>
+        
+        <activity android:name="org.openintents.distribution.EulaActivity" android:label="@string/eula_title">
+        </activity> 
+        <activity android:name="org.openintents.distribution.AboutActivity" android:label="@string/about_title">
+        </activity> 
+        
+    </application>
+</manifest> 

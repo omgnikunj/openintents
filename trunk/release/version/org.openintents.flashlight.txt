@@ -1,0 +1,3 @@
+10003
+-6944545922805199323
+Version 1.0.3: Flashlight stays bright, uses OI Update.

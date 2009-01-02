@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+ * Copyright (C) 2008 OpenIntents.org
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ -->
+ 
+ <resources>
+    <string name="presentpicker_app_name">Present Picker</string>
+    <string name="pick_contact">Pick a contact</string>
+    <string name="name">Name:</string>
+    <string name="recommendation"><I>I recommend the following presents:</I></string>
+    <string name="add_item_to">Add to shopping list</string>
+    <string name="view_shopping_list">View shopping list</string>
+	<string name="male">M</string>
+	<string name="female">F</string>
+	<string name="age">Age:</string>
+	<string name="personality">Personality:</string>
+	<string name="occasion">Occasion:</string>
+	<string name="search">Search</string>
+	<string name="selection">Your selection:</string>
+	<string name="selection_hint">Pick a present</string>
+	<string name="autocomplete_hint">Typing * will show all of your contacts.</string>
+   
+    <string name="about_title">About Present Picker</string>
+    <string name="about_content">Present Picker finds the right present for any occasion.</string>
+    <string name="copyright">(c) 2008 OpenIntents.org</string>
+    <string name="about_icons">The freeware icons are created by FastIcon.com and are subject to their license conditions.</string>
+    <string name="item_added_to_shopping">Item has been added to default shopping list</string>
+    <string name="item_not_added_to_shopping">Item could NOT been added to list (see log)</string>
+    
+    <!-- Strings that are also in core -->
+    <string name="about">About</string>
+    <string name="ok">OK</string>
+    
+   </resources>
