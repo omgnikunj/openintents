@@ -30,6 +30,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.openintents.intents.AboutIntents;
+import org.openintents.metadata.AboutMetaData;
 
 import android.app.TabActivity;
 import android.content.ComponentName;
@@ -157,14 +158,25 @@ public class About extends TabActivity {
 		if (intent.hasExtra(AboutIntents.EXTRA_ARTISTS)
 				&& intent.getStringArrayExtra(AboutIntents.EXTRA_ARTISTS) 
 					!= null) {
-			String text = "";
-			for (String person : intent
-					.getStringArrayExtra(AboutIntents.EXTRA_ARTISTS)) {
-				text += person + "\n";
-    		}
-    		mArtistsText.setText(text);
+    		setTextFromArrayForPersons(intent
+    				.getStringArrayExtra(AboutIntents.EXTRA_ARTISTS), mArtistsText);
     	} else {
-    		mArtistsText.setText("");
+            //Try meta data of package
+            Bundle md = null;
+            try {
+                    md = getPackageManager().getApplicationInfo(
+						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
+            } catch (NameNotFoundException e) {
+                Log.e(TAG, "Package name not found", e);
+            }
+
+            if (md != null
+					&& md.getStringArray(AboutMetaData.METADATA_ARTISTS) != null) {
+        		setTextFromArrayForPersons(md
+						.getStringArray(AboutMetaData.METADATA_ARTISTS), mArtistsText);
+            } else {
+            	mArtistsText.setText("");
+            }
     	}
 	}
 
@@ -177,14 +189,25 @@ public class About extends TabActivity {
 		if (intent.hasExtra(AboutIntents.EXTRA_AUTHORS)
 				&& intent.getStringArrayExtra(AboutIntents.EXTRA_AUTHORS) 
 					!= null) {
-			String text = "";
-			for (String person : intent
-					.getStringArrayExtra(AboutIntents.EXTRA_AUTHORS)) {
-				text += person + "\n";
-    		}
-    		mAuthorsText.setText(text);
+    		setTextFromArrayForPersons(intent
+    				.getStringArrayExtra(AboutIntents.EXTRA_AUTHORS), mAuthorsText);
     	} else {
-    		mAuthorsText.setText("");
+            //Try meta data of package
+            Bundle md = null;
+            try {
+                    md = getPackageManager().getApplicationInfo(
+						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
+            } catch (NameNotFoundException e) {
+                Log.e(TAG, "Package name not found", e);
+            }
+
+            if (md != null
+					&& md.getStringArray(AboutMetaData.METADATA_AUTHORS) != null) {
+        		setTextFromArrayForPersons(md
+						.getStringArray(AboutMetaData.METADATA_AUTHORS), mAuthorsText);
+            } else {
+            	mAuthorsText.setText("");
+            }
     	}
 	}
 
@@ -199,7 +222,23 @@ public class About extends TabActivity {
 			mCommentsText.setText(intent
 					.getStringExtra(AboutIntents.EXTRA_COMMENTS));
     	} else {
-    		mCommentsText.setText("");
+            //Try meta data of package
+            Bundle md = null;
+            try {
+                    md = getPackageManager().getApplicationInfo(
+						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
+            } catch (NameNotFoundException e) {
+                Log.e(TAG, "Package name not found", e);
+            }
+
+            if (md != null
+					&& !TextUtils.isEmpty(md
+							.getString(AboutMetaData.METADATA_COMMENTS))) {
+            	mCommentsText.setText(md
+						.getString(AboutMetaData.METADATA_COMMENTS));
+            } else {
+            	mCommentsText.setText("");
+            }
     	}
 	}
 
@@ -215,7 +254,23 @@ public class About extends TabActivity {
 			mCopyrightText.setText(intent
 					.getStringExtra(AboutIntents.EXTRA_COPYRIGHT));
     	} else {
-    		mCopyrightText.setText("");
+            //Try meta data of package
+            Bundle md = null;
+            try {
+                    md = getPackageManager().getApplicationInfo(
+						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
+            } catch (NameNotFoundException e) {
+                Log.e(TAG, "Package name not found", e);
+            }
+
+            if (md != null
+					&& !TextUtils.isEmpty(md
+							.getString(AboutMetaData.METADATA_COPYRIGHT))) {
+            	mCopyrightText.setText(md
+						.getString(AboutMetaData.METADATA_COPYRIGHT));
+            } else {
+            	mCopyrightText.setText("");
+            }
     	}
 	}
 
@@ -228,15 +283,34 @@ public class About extends TabActivity {
 		if (intent.hasExtra(AboutIntents.EXTRA_DOCUMENTERS)
 				&& intent.getStringArrayExtra(AboutIntents.EXTRA_DOCUMENTERS) 
 					!= null) {
-    		String text = "";
-    		for (String person : intent
-					.getStringArrayExtra(AboutIntents.EXTRA_DOCUMENTERS)) {
-    			text += person + "\n";
-    		}
-    		mDocumentersText.setText(text);
+    		setTextFromArrayForPersons(intent
+    				.getStringArrayExtra(AboutIntents.EXTRA_DOCUMENTERS), mDocumentersText);
     	} else {
-    		mDocumentersText.setText("");
+            //Try meta data of package
+            Bundle md = null;
+            try {
+                    md = getPackageManager().getApplicationInfo(
+						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
+            } catch (NameNotFoundException e) {
+                Log.e(TAG, "Package name not found", e);
+            }
+
+            if (md != null
+					&& md.getStringArray(AboutMetaData.METADATA_DOCUMENTERS) != null) {
+        		setTextFromArrayForPersons(md
+						.getStringArray(AboutMetaData.METADATA_DOCUMENTERS), mDocumentersText);
+            } else {
+            	mDocumentersText.setText("");
+            }
     	}
+	}
+
+	protected void setTextFromArrayForPersons(final String[] personsArray, TextView view) {
+		String text = "";
+		for (String person : personsArray) {
+			text += person + "\n";
+		}
+		view.setText(text);
 	}
 
 	/**
@@ -255,7 +329,7 @@ public class About extends TabActivity {
 					.getStringExtra(AboutIntents.EXTRA_LICENSE));
 		} else {
     		mLicenseText.setText("");
-    	}
+    	}//TODO from metadata
 	}
 
 	/**
@@ -365,16 +439,29 @@ public class About extends TabActivity {
 		if (intent.hasExtra(AboutIntents.EXTRA_TRANSLATORS)
 				&& intent.getStringArrayExtra(AboutIntents.EXTRA_TRANSLATORS) 
 					!= null) {
-			String text = "";
-			for (String person : intent
-					.getStringArrayExtra(AboutIntents.EXTRA_TRANSLATORS)) {
-				text += person + "\n";
-    		}
-    		mTranslatorsText.setText(text);
+    		setTextFromArrayForPersons(intent
+    				.getStringArrayExtra(AboutIntents.EXTRA_TRANSLATORS),
+					mTranslatorsText);
     	} else {
-    		mTranslatorsText.setText("");
+            //Try meta data of package
+            Bundle md = null;
+            try {
+                    md = getPackageManager().getApplicationInfo(
+						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
+            } catch (NameNotFoundException e) {
+                Log.e(TAG, "Package name not found", e);
+            }
+          
+            if (md != null
+					&& md.getStringArray(AboutMetaData.METADATA_TRANSLATORS) != null) {
+        		setTextFromArrayForPersons(md
+						.getStringArray(AboutMetaData.METADATA_TRANSLATORS),
+						mTranslatorsText);
+            } else {
+        		mTranslatorsText.setText("");
+            }
     	}
-	}
+	} //TODO md.getStringArray() is null for some reason
 
 	/**
 	 * Fetch and display website link information.
@@ -383,37 +470,62 @@ public class About extends TabActivity {
 	 */
 	protected void displayWebsiteLink(final Intent intent) {
 		if (intent.hasExtra(AboutIntents.EXTRA_WEBSITE_URL)
-				&& intent.getStringExtra(AboutIntents.EXTRA_WEBSITE_URL) != null
-				&& intent.hasExtra(AboutIntents.EXTRA_WEBSITE_LABEL)
-				&& intent.getStringExtra(AboutIntents.EXTRA_WEBSITE_LABEL) 
-					!= null) {
-			mWebsiteText.setText(intent
-					.getStringExtra(AboutIntents.EXTRA_WEBSITE_LABEL));
-    		
-    		//Create TransformFilter
-    		TransformFilter tf = new TransformFilter() {
+				&& intent.getStringExtra(AboutIntents.EXTRA_WEBSITE_URL) != null) {
+			setAndLinkifyWebsiteLink(intent
+					.getStringExtra(AboutIntents.EXTRA_WEBSITE_LABEL), intent
+					.getStringExtra(AboutIntents.EXTRA_WEBSITE_URL));
+		} else {
+            //Try meta data of package
+            Bundle md = null;
+            try {
+                    md = getPackageManager().getApplicationInfo(
+						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
+            } catch (NameNotFoundException e) {
+                Log.e(TAG, "Package name not found", e);
+            }
 
+            if (md != null
+					&& !TextUtils.isEmpty(md
+							.getString(AboutMetaData.METADATA_WEBSITE_URL))) {
+				setAndLinkifyWebsiteLink(md
+						.getString(AboutMetaData.METADATA_WEBSITE_LABEL), md
+						.getString(AboutMetaData.METADATA_WEBSITE_URL));
+            } else {
+        		mWebsiteText.setText("");
+            }
+
+    	}
+	}
+
+	/**
+	 * Set the website link TextView and linkify.
+	 * 
+	 * @param websiteLabel The label to set.
+	 * @param websiteUrl The URL that the label links to.
+	 */
+	protected void setAndLinkifyWebsiteLink(final String websiteLabel, final String websiteUrl) {
+		if (!TextUtils.isEmpty(websiteUrl)) {
+			if (TextUtils.isEmpty(websiteLabel)) {
+				mWebsiteText.setText(websiteUrl);
+			} else {
+				mWebsiteText.setText(websiteLabel);
+			}
+			//Create TransformFilter
+			TransformFilter tf = new TransformFilter() {
+	
 				public String transformUrl(final Matcher matcher,
 						final String url) {
-					return intent
-							.getStringExtra(AboutIntents.EXTRA_WEBSITE_URL);
+					return websiteUrl;
 				}
-    			
-    		};
-    		
-    		//Allow a label and url through Linkify
+				
+			};
+			
+			//Allow a label and url through Linkify
 			Linkify.addLinks((TextView) mWebsiteText.getChildAt(0), Pattern
 					.compile(".*"), "", null, tf);
 			Linkify.addLinks((TextView) mWebsiteText.getChildAt(1), Pattern
 					.compile(".*"), "", null, tf);
-		} else if (intent.hasExtra(AboutIntents.EXTRA_WEBSITE_URL)
-				&& intent.getStringExtra(AboutIntents.EXTRA_WEBSITE_URL) 
-					!= null) {
-			mWebsiteText.setText(intent
-					.getStringExtra(AboutIntents.EXTRA_WEBSITE_URL));
-    	} else {
-    		mWebsiteText.setText("");
-    	}
+		}
 	}
 
 	/* (non-Javadoc)
