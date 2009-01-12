@@ -50,9 +50,9 @@ import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.EditText;
 import android.widget.ImageSwitcher;
 import android.widget.TabHost;
 import android.widget.TextSwitcher;
@@ -75,15 +75,22 @@ public class About extends TabActivity {
 	 * The views.
 	 */
 	protected ImageSwitcher mLogoImage;
+	protected ImageSwitcher mEmailImage;
 	protected TextSwitcher mProgramNameAndVersionText;
 	protected TextSwitcher mCommentsText;
 	protected TextSwitcher mCopyrightText;
 	protected TextSwitcher mWebsiteText;
-	protected EditText mAuthorsText;
-	protected EditText mDocumentersText;
-	protected EditText mTranslatorsText;
-	protected EditText mArtistsText;
-	protected EditText mLicenseText;
+	protected TextSwitcher mEmailText;
+	protected TextView mAuthorsLabel;
+	protected TextView mAuthorsText;
+	protected TextView mDocumentersLabel;
+	protected TextView mDocumentersText;
+	protected TextView mTranslatorsLabel;
+	protected TextView mTranslatorsText;
+	protected TextView mArtistsLabel;
+	protected TextView mArtistsText;
+	protected TextView mNoInformationText;
+	protected TextView mLicenseText;
 
 	protected TabHost tabHost;
 
@@ -92,27 +99,58 @@ public class About extends TabActivity {
 	 */
 	public static final int MENU_ITEM_ABOUT = Menu.FIRST;
 
+
+	/**
+	 * Retrieve the package name to be used with this intent.
+	 * 
+	 * Package name is retrieved from EXTRA_PACKAGE or from
+	 * getCallingPackage().
+	 * 
+	 * If none is supplied, it is set to this application.
+	 */
+	String getPackageNameFromIntent(Intent intent) {
+		String packagename = null;
+		
+		if (intent.hasExtra(AboutIntents.EXTRA_PACKAGE_NAME)) {
+			packagename = intent.getStringExtra(AboutIntents.EXTRA_PACKAGE_NAME);
+
+			// Check whether packagename is valid:
+			try {
+	            getPackageManager().getApplicationInfo(
+	            		packagename, 0);
+		    } catch (NameNotFoundException e) {
+		        Log.e(TAG, "Package name " + packagename + " is not valid.", e);
+		        packagename = null;
+		    }
+		}
+		
+		// If no valid name has been found, we try to obtain it from
+		// the calling activit.
+		if (packagename == null) {
+			// Retrieve from calling activity
+			packagename = getCallingPackage();
+		}
+		
+	    if (packagename == null) {
+	    	// In the worst case, use our own name:
+	    	packagename = getPackageName();
+	    }
+	    
+	    return packagename;
+	}
+	
     /**
 	 * Change the logo image using the resource in the string argument.
 	 * 
 	 * @param logoString
-	 *            String of a content uri to an image resource (actually, can
-	 *            also be a string of a resId, but that won't help much across
-	 *            packages).
+	 *            String of a content uri to an image resource
 	 */
-	protected void changeLogoImage(final String logoString) {
-		try {
-			int imageDescriptionResId = Integer
-					.parseInt(logoString);
-			mLogoImage.setImageResource(imageDescriptionResId);
-		} catch (NumberFormatException nfe) { // Not a resource id but a uri
-												// perhaps?
-			Uri imageDescriptionUri = Uri.parse(logoString);
-			if (imageDescriptionUri != null) {
-				mLogoImage.setImageURI(imageDescriptionUri);
-			} else { // Not even a uri, so invalid.
-				throw new IllegalArgumentException("Not a valid image.");
-			}
+	protected void changeLogoImageUri(final String logoString) {
+		Uri imageDescriptionUri = Uri.parse(logoString);
+		if (imageDescriptionUri != null) {
+			mLogoImage.setImageURI(imageDescriptionUri);
+		} else { // Not a uri, so invalid.
+			throw new IllegalArgumentException("Not a valid image.");
 		}
 	}
 
@@ -126,7 +164,7 @@ public class About extends TabActivity {
 	 *            String of the name of the source package of the image resource
 	 *            (the package name of the calling app).
 	 */
-	protected void changeLogoImage(final String resourceFileName,
+	protected void changeLogoImageResource(final String resourceFileName,
 			final String resourcePackageName) {
 		try {
 			Resources resources = getPackageManager()
@@ -152,173 +190,148 @@ public class About extends TabActivity {
 	/**
 	 * Fetch and display artists information.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected void displayArtists(final Intent intent) {
-		if (intent.hasExtra(AboutIntents.EXTRA_ARTISTS)
-				&& intent.getStringArrayExtra(AboutIntents.EXTRA_ARTISTS) 
-					!= null) {
-    		setTextFromArrayForPersons(intent
-    				.getStringArrayExtra(AboutIntents.EXTRA_ARTISTS), mArtistsText);
-    	} else {
-            //Try meta data of package
-            Bundle md = null;
-            try {
-                    md = getPackageManager().getApplicationInfo(
-						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
-            } catch (NameNotFoundException e) {
-                Log.e(TAG, "Package name not found", e);
-            }
+	protected void displayArtists(final String packagename, final Intent intent) {
+		String[] textarray = AboutUtils.getStringArrayExtraOrMetadata(this, packagename, intent, AboutIntents.EXTRA_ARTISTS, AboutMetaData.METADATA_ARTISTS);
 
-            if (md != null
-					&& md.getStringArray(AboutMetaData.METADATA_ARTISTS) != null) {
-        		setTextFromArrayForPersons(md
-						.getStringArray(AboutMetaData.METADATA_ARTISTS), mArtistsText);
-            } else {
-            	mArtistsText.setText("");
-            }
-    	}
+		String text = AboutUtils.getTextFromArray(textarray);
+		
+		if (!TextUtils.isEmpty(text)) {
+			mArtistsText.setText(text);
+			mArtistsLabel.setVisibility(View.VISIBLE);
+			mArtistsText.setVisibility(View.VISIBLE);
+		} else {
+			mArtistsLabel.setVisibility(View.GONE);
+			mArtistsText.setVisibility(View.GONE);
+		}
 	}
 
 	/**
 	 * Fetch and display authors information.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected void displayAuthors(final Intent intent) {
-		if (intent.hasExtra(AboutIntents.EXTRA_AUTHORS)
-				&& intent.getStringArrayExtra(AboutIntents.EXTRA_AUTHORS) 
-					!= null) {
-    		setTextFromArrayForPersons(intent
-    				.getStringArrayExtra(AboutIntents.EXTRA_AUTHORS), mAuthorsText);
-    	} else {
-            //Try meta data of package
-            Bundle md = null;
-            try {
-                    md = getPackageManager().getApplicationInfo(
-						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
-            } catch (NameNotFoundException e) {
-                Log.e(TAG, "Package name not found", e);
-            }
-
-            if (md != null
-					&& md.getStringArray(AboutMetaData.METADATA_AUTHORS) != null) {
-        		setTextFromArrayForPersons(md
-						.getStringArray(AboutMetaData.METADATA_AUTHORS), mAuthorsText);
-            } else {
-            	mAuthorsText.setText("");
-            }
-    	}
+	private void displayAuthors(final String packagename, final Intent intent) {
+		String[] textarray = AboutUtils.getStringArrayExtraOrMetadata(this, packagename, intent, AboutIntents.EXTRA_AUTHORS, AboutMetaData.METADATA_AUTHORS);
+		
+		String text = AboutUtils.getTextFromArray(textarray);
+		
+		if (!TextUtils.isEmpty(text)) {
+			mAuthorsText.setText(text);
+			mAuthorsLabel.setVisibility(View.VISIBLE);
+			mAuthorsText.setVisibility(View.VISIBLE);
+		} else {
+			mAuthorsLabel.setVisibility(View.GONE);
+			mAuthorsText.setVisibility(View.GONE);
+		}
 	}
 
 	/**
 	 * Fetch and display comments information.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected void displayComments(final Intent intent) {
-		if (intent.hasExtra(AboutIntents.EXTRA_COMMENTS)
-				&& intent.getStringExtra(AboutIntents.EXTRA_COMMENTS) != null) {
-			mCommentsText.setText(intent
-					.getStringExtra(AboutIntents.EXTRA_COMMENTS));
-    	} else {
-            //Try meta data of package
-            Bundle md = null;
-            try {
-                    md = getPackageManager().getApplicationInfo(
-						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
-            } catch (NameNotFoundException e) {
-                Log.e(TAG, "Package name not found", e);
-            }
-
-            if (md != null
-					&& !TextUtils.isEmpty(md
-							.getString(AboutMetaData.METADATA_COMMENTS))) {
-            	mCommentsText.setText(md
-						.getString(AboutMetaData.METADATA_COMMENTS));
-            } else {
-            	mCommentsText.setText("");
-            }
-    	}
+	protected void displayComments(final String packagename, final Intent intent) {
+		String text = AboutUtils.getStringExtraOrMetadata(this, packagename, intent, 
+				AboutIntents.EXTRA_COMMENTS, AboutMetaData.METADATA_COMMENTS);
+		
+		if (!TextUtils.isEmpty(text)) {
+			mCommentsText.setText(text);
+			mCommentsText.setVisibility(View.VISIBLE);
+		} else {
+			mCommentsText.setVisibility(View.GONE);
+		}
 	}
 
 	/**
 	 * Fetch and display copyright information.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected void displayCopyright(final Intent intent) {
-		if (intent.hasExtra(AboutIntents.EXTRA_COPYRIGHT)
-				&& intent.getStringExtra(AboutIntents.EXTRA_COPYRIGHT) 
-					!= null) {
-			mCopyrightText.setText(intent
-					.getStringExtra(AboutIntents.EXTRA_COPYRIGHT));
-    	} else {
-            //Try meta data of package
-            Bundle md = null;
-            try {
-                    md = getPackageManager().getApplicationInfo(
-						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
-            } catch (NameNotFoundException e) {
-                Log.e(TAG, "Package name not found", e);
-            }
-
-            if (md != null
-					&& !TextUtils.isEmpty(md
-							.getString(AboutMetaData.METADATA_COPYRIGHT))) {
-            	mCopyrightText.setText(md
-						.getString(AboutMetaData.METADATA_COPYRIGHT));
-            } else {
-            	mCopyrightText.setText("");
-            }
-    	}
+	protected void displayCopyright(final String packagename, final Intent intent) {
+		String text = AboutUtils.getStringExtraOrMetadata(this, packagename, intent, 
+				AboutIntents.EXTRA_COPYRIGHT, AboutMetaData.METADATA_COPYRIGHT);
+		
+		if (!TextUtils.isEmpty(text)) {
+			mCopyrightText.setText(text);
+			mCopyrightText.setVisibility(View.VISIBLE);
+		} else {
+			mCopyrightText.setVisibility(View.GONE);
+		}
 	}
 
 	/**
 	 * Fetch and display documenters information.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected void displayDocumenters(final Intent intent) {
-		if (intent.hasExtra(AboutIntents.EXTRA_DOCUMENTERS)
-				&& intent.getStringArrayExtra(AboutIntents.EXTRA_DOCUMENTERS) 
-					!= null) {
-    		setTextFromArrayForPersons(intent
-    				.getStringArrayExtra(AboutIntents.EXTRA_DOCUMENTERS), mDocumentersText);
-    	} else {
-            //Try meta data of package
-            Bundle md = null;
-            try {
-                    md = getPackageManager().getApplicationInfo(
-						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
-            } catch (NameNotFoundException e) {
-                Log.e(TAG, "Package name not found", e);
-            }
-
-            if (md != null
-					&& md.getStringArray(AboutMetaData.METADATA_DOCUMENTERS) != null) {
-        		setTextFromArrayForPersons(md
-						.getStringArray(AboutMetaData.METADATA_DOCUMENTERS), mDocumentersText);
-            } else {
-            	mDocumentersText.setText("");
-            }
-    	}
-	}
-
-	protected void setTextFromArrayForPersons(final String[] personsArray, TextView view) {
-		String text = "";
-		for (String person : personsArray) {
-			text += person + "\n";
+	protected void displayDocumenters(final String packagename, final Intent intent) {
+		String[] textarray = AboutUtils.getStringArrayExtraOrMetadata(this, packagename, intent, 
+				AboutIntents.EXTRA_DOCUMENTERS, AboutMetaData.METADATA_DOCUMENTERS);
+		String text = AboutUtils.getTextFromArray(textarray);
+		
+		if (!TextUtils.isEmpty(text)) {
+			mDocumentersText.setText(text);
+			mDocumentersLabel.setVisibility(View.VISIBLE);
+			mDocumentersText.setVisibility(View.VISIBLE);
+		} else {
+			mDocumentersLabel.setVisibility(View.GONE);
+			mDocumentersText.setVisibility(View.GONE);
 		}
-		view.setText(text);
 	}
+
 
 	/**
 	 * Fetch and display license information.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected void displayLicense(final Intent intent) {
+	protected void displayLicense(final String packagename, final Intent intent) {
+		
+		int resourceid = AboutUtils.getResourceIdExtraOrMetadata(this, packagename, intent, 
+				AboutIntents.EXTRA_LICENSE_RESOURCE, AboutMetaData.METADATA_LICENSE);
+		
+		if (resourceid == 0) {
+			mLicenseText.setText(R.string.no_information_available);
+			return;
+		}
+		
+		
+		// Retrieve license from resource:
+		String license = "";
+		try {
+    		Resources resources = getPackageManager()
+				.getResourcesForApplication(packagename);
+    		
+    		//Read in the license file as a big String
+    		BufferedReader in
+    		   = new BufferedReader(new InputStreamReader(
+    				resources.openRawResource(resourceid)));
+    		String line;
+    		StringBuilder sb = new StringBuilder();
+    		try {
+    			while ((line = in.readLine()) != null) { // Read line per line.
+    				if (TextUtils.isEmpty(line)) {
+    					// Empty line: Leave line break
+    					sb.append("\n\n");
+    				} else {
+    					sb.append(line);
+    					sb.append(" ");
+    				}
+    			}
+    			license = sb.toString();
+    		} catch (IOException e) {
+    			//Should not happen.
+    			e.printStackTrace();
+    		}
+    		
+    	} catch (NameNotFoundException e) {
+            Log.e(TAG, "Package name not found", e);
+    	}
+    	
+    	mLicenseText.setText(license);
+		/*
 		mLicenseText.setHorizontallyScrolling(!intent.getBooleanExtra(
 				AboutIntents.EXTRA_WRAP_LICENSE, false));
 		mLicenseText.setHorizontalScrollBarEnabled(!intent.getBooleanExtra(
@@ -329,43 +342,48 @@ public class About extends TabActivity {
 					.getStringExtra(AboutIntents.EXTRA_LICENSE));
 		} else {
     		mLicenseText.setText("");
-    	}//TODO from metadata
+    	}
+    	*/
 	}
 
 	/**
 	 * Fetch and display logo information.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected void displayLogo(final Intent intent) {
-		if (intent.hasExtra(AboutIntents.EXTRA_LOGO)
-				&& intent.getStringExtra(AboutIntents.EXTRA_LOGO) != null
-				&& intent.hasExtra(AboutIntents.EXTRA_LOGO_PACKAGE)
-				&& intent.getStringExtra(AboutIntents.EXTRA_LOGO_PACKAGE) 
-					!= null) {
+	protected void displayLogo(final String packagename, final Intent intent) {
+		if (intent.hasExtra(AboutIntents.EXTRA_ICON_RESOURCE)
+				&& intent.getStringExtra(AboutIntents.EXTRA_ICON_RESOURCE) != null) {
     		try {
-    			changeLogoImage(intent.getStringExtra(AboutIntents.EXTRA_LOGO),
-						intent.getStringExtra(AboutIntents.EXTRA_LOGO_PACKAGE));
+    			changeLogoImageResource(intent.getStringExtra(AboutIntents.EXTRA_ICON_RESOURCE),
+						packagename);
     		} catch (IllegalArgumentException e) {
-    			mLogoImage.setImageURI(Uri.EMPTY);
+    			mLogoImage.setImageResource(android.R.drawable.ic_menu_info_details);
+    			//mLogoImage.setImageURI(Uri.EMPTY);
     		}
-    	} else if (intent.hasExtra(AboutIntents.EXTRA_LOGO)
-				&& intent.getStringExtra(AboutIntents.EXTRA_LOGO) != null) {
+    	} else if (intent.hasExtra(AboutIntents.EXTRA_ICON_URI)
+				&& intent.getStringExtra(AboutIntents.EXTRA_ICON_URI) != null) {
     		try {
-    			changeLogoImage(intent.getStringExtra(AboutIntents.EXTRA_LOGO));
+    			changeLogoImageUri(intent.getStringExtra(AboutIntents.EXTRA_ICON_URI));
     		} catch (IllegalArgumentException e) {
-    			mLogoImage.setImageURI(Uri.EMPTY);
+    			mLogoImage.setImageResource(android.R.drawable.ic_menu_info_details);
+    			//mLogoImage.setImageURI(Uri.EMPTY);
     		}
     	} else {
     		try {
                 PackageInfo pi = getPackageManager().getPackageInfo(
-						getCallingPackage(), 0);
-                changeLogoImage("" + pi.applicationInfo.icon);
+						packagename, 0);
+    			Resources resources = getPackageManager()
+    					.getResourcesForApplication(packagename);
+    			String resourcename = resources.getResourceName(pi.applicationInfo.icon);
+                changeLogoImageResource(resourcename, packagename);
     		} catch (PackageManager.NameNotFoundException e) {
                 Log.e(TAG, "Package name not found", e);
-        		mLogoImage.setImageURI(Uri.EMPTY);
+    			mLogoImage.setImageResource(android.R.drawable.ic_menu_info_details);
+        		//mLogoImage.setImageURI(Uri.EMPTY);
     		} catch (IllegalArgumentException e) {
-    			mLogoImage.setImageURI(Uri.EMPTY);
+    			mLogoImage.setImageResource(android.R.drawable.ic_menu_info_details);
+    			//mLogoImage.setImageURI(Uri.EMPTY);
     		}
     	}
 	}
@@ -373,130 +391,104 @@ public class About extends TabActivity {
 	/**
 	 * Fetch and display program name and version information.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected void displayProgramNameAndVersion(final Intent intent) {
-		String programText;
-		if (intent.hasExtra(AboutIntents.EXTRA_PROGRAM_NAME)
-				&& intent.getStringExtra(AboutIntents.EXTRA_PROGRAM_NAME) 
-					!= null) {
-			programText = intent
-					.getStringExtra(AboutIntents.EXTRA_PROGRAM_NAME);
-			setTitle(getString(R.string.about_activity_title) + " "
-					+ intent.getStringExtra(AboutIntents.EXTRA_PROGRAM_NAME));
-        } else {
-            try {
-                    PackageInfo pi = getPackageManager().getPackageInfo(
-						getCallingPackage(), 0);
-                    programText = getString(pi.applicationInfo.labelRes);
-                    if (TextUtils.isEmpty(programText)) {
-                    	refuseToShow();
-                    	return;
-                    }
-            } catch (PackageManager.NameNotFoundException e) {
-                    Log.e(TAG, "Package name not found", e);
-                	refuseToShow();
-                	return;
-            }
-        }
-        programText = displayProgramVersion(intent, programText);
-        mProgramNameAndVersionText.setText(programText);
+	protected void displayProgramNameAndVersion(final String packagename, final Intent intent) {
+		String applicationlabel = getApplicationLabel(packagename, intent);
+		String versionname = getVersionName(packagename, intent);
+		
+		String combined = applicationlabel;
+		if (!TextUtils.isEmpty(versionname)) {
+			combined += " " + versionname;
+		}
+		
+        mProgramNameAndVersionText.setText(combined);
 	}
 
 	/**
-	 * Fetch and display program version information.
+	 * Get application label.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected String displayProgramVersion(final Intent intent, String programText) {
-		if (intent.hasExtra(AboutIntents.EXTRA_PROGRAM_VERSION)
-				&& intent.getStringExtra(AboutIntents.EXTRA_PROGRAM_VERSION) 
+	protected String getApplicationLabel(final String packagename, final Intent intent) {
+		String applicationlabel = null;
+		if (intent.hasExtra(AboutIntents.EXTRA_APPLICATION_LABEL)
+				&& intent.getStringExtra(AboutIntents.EXTRA_APPLICATION_LABEL) 
 					!= null) {
-			programText += " "
-				+ intent.getStringExtra(AboutIntents.EXTRA_PROGRAM_VERSION);
+			applicationlabel = intent.getStringExtra(AboutIntents.EXTRA_APPLICATION_LABEL);
 		} else {
-			String version = "";
             try {
                     PackageInfo pi = getPackageManager().getPackageInfo(
-                    		getCallingPackage(), 0);
-                    version = pi.versionName;
+                    		packagename, 0);
+                    int labelid = pi.applicationInfo.labelRes;
+         			Resources resources = getPackageManager()
+         					.getResourcesForApplication(packagename);
+         			applicationlabel = resources.getString(labelid);
             } catch (PackageManager.NameNotFoundException e) {
                     Log.e(TAG, "Package name not found", e);
             }
-            if (!TextUtils.isEmpty(version)) {
-                programText += " " + version;
+		}
+		return applicationlabel;
+	}
+	
+	/**
+	 * Get version information.
+	 * 
+	 * @param intent The intent from which to fetch the information.
+	 */
+	protected String getVersionName(final String packagename, final Intent intent) {
+		String versionname = null;
+		if (intent.hasExtra(AboutIntents.EXTRA_VERSION_NAME)
+				&& intent.getStringExtra(AboutIntents.EXTRA_VERSION_NAME) 
+					!= null) {
+			versionname = intent.getStringExtra(AboutIntents.EXTRA_VERSION_NAME);
+		} else {
+            try {
+                    PackageInfo pi = getPackageManager().getPackageInfo(
+                    		packagename, 0);
+                    versionname = pi.versionName;
+            } catch (PackageManager.NameNotFoundException e) {
+                    Log.e(TAG, "Package name not found", e);
             }
 		}
-		return programText;
+		return versionname;
 	}
 
 	/**
 	 * Fetch and display translators information.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected void displayTranslators(final Intent intent) {
-		if (intent.hasExtra(AboutIntents.EXTRA_TRANSLATORS)
-				&& intent.getStringArrayExtra(AboutIntents.EXTRA_TRANSLATORS) 
-					!= null) {
-    		setTextFromArrayForPersons(intent
-    				.getStringArrayExtra(AboutIntents.EXTRA_TRANSLATORS),
-					mTranslatorsText);
-    	} else {
-            //Try meta data of package
-            Bundle md = null;
-            try {
-                    md = getPackageManager().getApplicationInfo(
-						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
-            } catch (NameNotFoundException e) {
-                Log.e(TAG, "Package name not found", e);
-            }
-          
-            if (md != null
-					&& md.getStringArray(AboutMetaData.METADATA_TRANSLATORS) != null) {
-        		setTextFromArrayForPersons(md
-						.getStringArray(AboutMetaData.METADATA_TRANSLATORS),
-						mTranslatorsText);
-            } else {
-        		mTranslatorsText.setText("");
-            }
-    	}
-	} //TODO md.getStringArray() is null for some reason
+	protected void displayTranslators(final String packagename, final Intent intent) {
+
+		String[] textarray = AboutUtils.getStringArrayExtraOrMetadata(this, packagename, intent, AboutIntents.EXTRA_TRANSLATORS, AboutMetaData.METADATA_TRANSLATORS);
+		String text = AboutUtils.getTextFromArray(textarray);
+
+		if (!TextUtils.isEmpty(text)) {
+			mTranslatorsText.setText(text);
+			mTranslatorsLabel.setVisibility(View.VISIBLE);
+			mTranslatorsText.setVisibility(View.VISIBLE);
+		} else {
+			mTranslatorsLabel.setVisibility(View.GONE);
+			mTranslatorsText.setVisibility(View.GONE);
+		}
+		
+	}
 
 	/**
 	 * Fetch and display website link information.
 	 * 
-	 * @param intent The intent from which to tru to fetch the information.
+	 * @param intent The intent from which to fetch the information.
 	 */
-	protected void displayWebsiteLink(final Intent intent) {
-		if (intent.hasExtra(AboutIntents.EXTRA_WEBSITE_URL)
-				&& intent.getStringExtra(AboutIntents.EXTRA_WEBSITE_URL) != null) {
-			setAndLinkifyWebsiteLink(intent
-					.getStringExtra(AboutIntents.EXTRA_WEBSITE_LABEL), intent
-					.getStringExtra(AboutIntents.EXTRA_WEBSITE_URL));
-		} else {
-            //Try meta data of package
-            Bundle md = null;
-            try {
-                    md = getPackageManager().getApplicationInfo(
-						getCallingPackage(), PackageManager.GET_META_DATA).metaData;
-            } catch (NameNotFoundException e) {
-                Log.e(TAG, "Package name not found", e);
-            }
-
-            if (md != null
-					&& !TextUtils.isEmpty(md
-							.getString(AboutMetaData.METADATA_WEBSITE_URL))) {
-				setAndLinkifyWebsiteLink(md
-						.getString(AboutMetaData.METADATA_WEBSITE_LABEL), md
-						.getString(AboutMetaData.METADATA_WEBSITE_URL));
-            } else {
-        		mWebsiteText.setText("");
-            }
-
-    	}
+	protected void displayWebsiteLink(final String packagename, final Intent intent) {
+		String websitelabel = AboutUtils.getStringExtraOrMetadata(this, packagename,
+			intent, AboutIntents.EXTRA_WEBSITE_LABEL, AboutMetaData.METADATA_WEBSITE_LABEL);
+		String websiteurl = AboutUtils.getStringExtraOrMetadata(this, packagename,
+				intent, AboutIntents.EXTRA_WEBSITE_URL, AboutMetaData.METADATA_WEBSITE_URL);
+		
+		setAndLinkifyWebsiteLink(websitelabel, websiteurl);
 	}
-
+	
 	/**
 	 * Set the website link TextView and linkify.
 	 * 
@@ -510,6 +502,8 @@ public class About extends TabActivity {
 			} else {
 				mWebsiteText.setText(websiteLabel);
 			}
+			mWebsiteText.setVisibility(View.VISIBLE);
+			
 			//Create TransformFilter
 			TransformFilter tf = new TransformFilter() {
 	
@@ -525,9 +519,44 @@ public class About extends TabActivity {
 					.compile(".*"), "", null, tf);
 			Linkify.addLinks((TextView) mWebsiteText.getChildAt(1), Pattern
 					.compile(".*"), "", null, tf);
+		} else {
+			mWebsiteText.setVisibility(View.GONE);
 		}
 	}
 
+	/**
+	 * Fetch and display website link information.
+	 * 
+	 * @param intent The intent from which to fetch the information.
+	 */
+	protected void displayEmail(final String packagename, final Intent intent) {
+		String email = AboutUtils.getStringExtraOrMetadata(this, packagename,
+			intent, AboutIntents.EXTRA_EMAIL, AboutMetaData.METADATA_EMAIL);
+		
+		if (!TextUtils.isEmpty(email)) {
+			mEmailImage.setImageResource(android.R.drawable.ic_dialog_email);
+			mEmailText.setText(email);
+		} else {
+			mEmailImage.setImageURI(null);
+		}
+	}
+
+	/**
+	 * Check whether any credits are available.
+	 * If not, display "no information available".
+	 */
+	void checkCreditsAvailable() {
+		if (mAuthorsLabel.getVisibility() == View.GONE
+				&& mAuthorsLabel.getVisibility() == View.GONE
+				&& mAuthorsLabel.getVisibility() == View.GONE
+				&& mAuthorsLabel.getVisibility() == View.GONE ) {
+			mNoInformationText.setVisibility(View.VISIBLE);
+		} else {
+			mNoInformationText.setVisibility(View.GONE);
+		}
+				
+	}
+	
 	/* (non-Javadoc)
      * @see android.app.ActivityGroup#onCreate(android.os.Bundle)
      */
@@ -561,6 +590,12 @@ public class About extends TabActivity {
         mLogoImage = (ImageSwitcher) findViewById(R.id.i_logo);
         mLogoImage.setInAnimation(in);
         mLogoImage.setOutAnimation(out);
+
+        mEmailImage = (ImageSwitcher) findViewById(R.id.i_email);
+        mEmailImage.setInAnimation(in);
+        //mEmailImage.setOutAnimation(out);
+            // Strange bug: setting the out animation results in the envelope image
+        	// appearing and disappearing if one clicks on the email link repeatedly.
 		
         mProgramNameAndVersionText = (TextSwitcher) 
         		findViewById(R.id.t_program_name_and_version);
@@ -578,16 +613,30 @@ public class About extends TabActivity {
 		mWebsiteText = (TextSwitcher) findViewById(R.id.t_website);
 		mWebsiteText.setInAnimation(in);
 		mWebsiteText.setOutAnimation(out);
+
+        mEmailImage = (ImageSwitcher) findViewById(R.id.i_email);
+        mEmailImage.setInAnimation(in);
+        mEmailImage.setOutAnimation(out);
 		
-		mAuthorsText = (EditText) findViewById(R.id.et_authors);
+		mEmailText = (TextSwitcher) findViewById(R.id.t_email);
+		mEmailText.setInAnimation(in);
+		mEmailText.setOutAnimation(out);
+
+		mAuthorsLabel = (TextView) findViewById(R.id.l_authors);
+		mAuthorsText = (TextView) findViewById(R.id.et_authors);
+
+		mDocumentersLabel = (TextView) findViewById(R.id.l_documenters);
+		mDocumentersText = (TextView) findViewById(R.id.et_documenters);
+
+		mTranslatorsLabel = (TextView) findViewById(R.id.l_translators);
+		mTranslatorsText = (TextView) findViewById(R.id.et_translators);
+
+		mArtistsLabel = (TextView) findViewById(R.id.l_artists);
+		mArtistsText = (TextView) findViewById(R.id.et_artists);
 		
-		mDocumentersText = (EditText) findViewById(R.id.et_documenters);
-		
-		mTranslatorsText = (EditText) findViewById(R.id.et_translators);
-		
-		mArtistsText = (EditText) findViewById(R.id.et_artists);
-		
-		mLicenseText = (EditText) findViewById(R.id.et_license);
+		mNoInformationText = (TextView) findViewById(R.id.tv_no_information);
+
+		mLicenseText = (TextView) findViewById(R.id.et_license);
     }
 
 	/* (non-Javadoc)
@@ -599,7 +648,7 @@ public class About extends TabActivity {
 
 		//About action
 		menu.add(ContextMenu.NONE, MENU_ITEM_ABOUT, ContextMenu.NONE,
-				R.string.menu_about).setIcon(R.drawable.about);
+				R.string.menu_about).setIcon(R.drawable.ic_menu_info_details);
 
 		// Generate any additional actions that can be performed on the
 		// overall list. In a normal install, there are no additional
@@ -641,6 +690,7 @@ public class About extends TabActivity {
 		return super.onOptionsItemSelected(item);
 	}
 	
+
 	/* (non-Javadoc)
 	 * @see android.app.ActivityGroup#onResume()
 	 */
@@ -648,59 +698,63 @@ public class About extends TabActivity {
 	protected void onResume() {
 		super.onResume();
 		
-        tabHost.setCurrentTabByTag(getString(R.string.l_info));
+        // tabHost.setCurrentTabByTag(getString(R.string.l_info));
 		
 		//Decode the intent, if any
 		final Intent intent = getIntent();
+		/*
         if (intent == null) {
         	refuseToShow();
         	return;
         }
-    	setResult(RESULT_OK);
+        */
+		if (intent == null) {
+			setIntent(new Intent());
+		}
+		
+		String packagename = getPackageNameFromIntent(intent);
+		
+		Log.i(TAG, "Showing About dialog for package " + packagename);
     	
-    	displayLogo(intent);
-        displayProgramNameAndVersion(intent);
-    	displayComments(intent);
-    	displayCopyright(intent);
-    	displayWebsiteLink(intent);
-    	displayAuthors(intent);
-    	displayDocumenters(intent);
-    	displayTranslators(intent);
-    	displayArtists(intent);
-    	displayLicense(intent);
-	}
-	
-	/**
-	 * There wasn't enough data, so notify we canceled and finish the Activity.
-	 */
-	protected void refuseToShow() {
-		Log.e(TAG, "No program name specified.");
-		setResult(RESULT_CANCELED);
-		finish();
+    	displayLogo(packagename, intent);
+        displayProgramNameAndVersion(packagename, intent);
+    	displayComments(packagename, intent);
+    	displayCopyright(packagename, intent);
+    	displayWebsiteLink(packagename, intent);
+    	displayAuthors(packagename, intent);
+    	displayDocumenters(packagename, intent);
+    	displayTranslators(packagename, intent);
+    	displayArtists(packagename, intent);
+    	displayLicense(packagename, intent);
+    	displayEmail(packagename, intent);
+    	
+    	checkCreditsAvailable();
+    	
+    	setResult(RESULT_OK);
 	}
 
 	/**
 	 * Show an about dialog for this application.
 	 */
-	protected void showAboutDialog() {
+	private void showAboutDialogUsingExtras() {
 		Intent intent = new Intent(AboutIntents.ACTION_SHOW_ABOUT_DIALOG);
+
+		intent.putExtra(AboutIntents.EXTRA_PACKAGE_NAME, getPackageName());
 		
 		//Supply the image.
-		/*//alternative 2b: Put the image resId into the provider.
+		/*//alternative 1: Put the image resId into the provider.
 		Bitmap image = BitmapFactory.decodeResource(getResources(), 
 				R.drawable.icon);//lossy
 		String uri = Images.Media.insertImage(getContentResolver(), image,
 				getString(R.string.about_logo_title), 
 				getString(R.string.about_logo_description));
-		intent.putExtra(AboutIntents.EXTRA_LOGO, uri);*/
+		intent.putExtra(AboutIntents.EXTRA_ICON_URI, uri);*/
 		
-		//alternative 3: Supply the image name and package.
-		intent.putExtra(AboutIntents.EXTRA_LOGO, getResources()
-				.getResourceName(R.drawable.icon));
-		intent.putExtra(AboutIntents.EXTRA_LOGO_PACKAGE, getResources()
-				.getResourcePackageName(R.drawable.icon));
-
-		intent.putExtra(AboutIntents.EXTRA_PROGRAM_NAME,
+		//alternative 2: Supply the image name and package.
+		intent.putExtra(AboutIntents.EXTRA_ICON_RESOURCE, getResources()
+				.getResourceName(R.drawable.ic_menu_info_details));
+		
+		intent.putExtra(AboutIntents.EXTRA_APPLICATION_LABEL,
 				getString(R.string.app_name));
 		
 		//Get the app version
@@ -712,7 +766,7 @@ public class About extends TabActivity {
 		} catch (PackageManager.NameNotFoundException e) {
 		        Log.e(TAG, "Package name not found", e);
 		}
-		intent.putExtra(AboutIntents.EXTRA_PROGRAM_VERSION, version);
+		intent.putExtra(AboutIntents.EXTRA_VERSION_NAME, version);
 		
 		intent.putExtra(AboutIntents.EXTRA_COMMENTS,
 				getString(R.string.about_comments));
@@ -731,6 +785,11 @@ public class About extends TabActivity {
 		intent.putExtra(AboutIntents.EXTRA_ARTISTS, getResources()
 				.getStringArray(R.array.about_artists));
 		
+		// Supply resource name of raw resource that contains the license:
+		intent.putExtra(AboutIntents.EXTRA_LICENSE_RESOURCE, getResources()
+				.getResourceName(R.raw.license_short));
+		
+		/*
 		//Read in the license file as a big String
 		BufferedReader in
 		   = new BufferedReader(new InputStreamReader(
@@ -747,11 +806,30 @@ public class About extends TabActivity {
 		}
 		intent.putExtra(AboutIntents.EXTRA_LICENSE, license);
 		intent.putExtra(AboutIntents.EXTRA_WRAP_LICENSE, false);
+		*/
 		
 		// Start about activity. Needs to be "forResult" with requestCode>=0
 		// because the About dialog may call elements from your Manifest by your
 		// package name.
-		startActivityForResult(Intent.createChooser(intent,
-				getString(R.string.about_chooser_title)), 0);
+		startActivityForResult(intent, 0);
+		
+		// Don't need a chooser here:
+		//startActivityForResult(Intent.createChooser(intent,
+		//		getString(R.string.about_chooser_title)), 0);
+	}
+	
+
+	/**
+	 * Show an about dialog for this application.
+	 */
+	protected void showAboutDialog() {
+		Intent intent = new Intent(AboutIntents.ACTION_SHOW_ABOUT_DIALOG);
+		
+		// Start about activity. Needs to be "forResult" with requestCode>=0
+		// so the the package name is passed properly.
+		//
+		// The details are obtained from the Manifest through
+		// default tags and metadata.
+		startActivityForResult(intent, 0);
 	}
 }

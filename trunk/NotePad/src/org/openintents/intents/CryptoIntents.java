@@ -1,5 +1,5 @@
 /* 
- * Copyright 2008 OpenIntents.org
+ * Copyright 2008 Isaac Potoczny-Jones
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,11 @@
  */
 package org.openintents.intents;
 
-// Keeping version information in this file is important, because it has to be
-// copied between various projects and repositories manually.
-//
-// Version: 2009 Jan 2: added EXTRA_TEXT_ARRAY
-
 /**
+ * @version Jan 11, 2008, 11:50 UTC
+ * 
  * @author Isaac Potoczny-Jones
+ * @author Peli
  *
  */
 public class CryptoIntents {
@@ -64,6 +62,19 @@ public class CryptoIntents {
 	 * <p>Constant Value: "org.openintents.action.SET_PASSWORD"</p>
 	 */
 	public static final String ACTION_SET_PASSWORD = "org.openintents.action.SET_PASSWORD";
+
+	/**
+	 * Broadcast Action: Sent when the user got logged out of the
+	 * crypto session.
+	 * 
+	 * This can happen after the user logs out actively, 
+	 * or through a time-out.
+	 * 
+	 * Activities that show decrypted content should hide that content again.
+	 * 
+	 * <p>Constant Value: "org.openintents.action.CRYPTO_LOGGED_OUT"</p>
+	 */
+	public static final String ACTION_CRYPTO_LOGGED_OUT = "org.openintents.action.CRYPTO_LOGGED_OUT";
 	
 	/**
 	 * The text to encrypt or decrypt, or the location for the return result.
@@ -76,28 +87,21 @@ public class CryptoIntents {
 	 * An array of text to encrypt or decrypt, or the location for the return result.
 	 * Use this to encrypt several strings at once.
 	 * 
+	 * Entries of the array that are null will be simply ignored and not
+	 * encrypted or decrypted.
+	 * 
 	 * <p>Constant Value: "org.openintents.extra.TEXT_ARRAY"</p>
 	 */
 	public static final String EXTRA_TEXT_ARRAY = "org.openintents.extra.TEXT_ARRAY";
 	
 	/**
 	 * Required input parameter to GET_PASSWORD and SET_PASSWORD. Corresponds to the "description"
-	 * field in passwordsafe. Should be a descriptive name for the password you're using,
-	 * and will already be specific to your application.
+	 * field in passwordsafe. Should be a unique name for the password you're using,
+	 * and will already be specific to your application, ie "org.syntaxpolice.opensocial"
 	 * 
-	 * <p>Constant Value: "org.openintents.extra.DESCRIPTION"</p>
+	 * <p>Constant Value: "org.openintents.extra.UNIQUE_NAME"</p>
 	 */
-	public static final String EXTRA_DESCRIPTION = "org.openintents.extra.DESCRIPTION";
-	
-	/**
-	 * Optional input parameter to GET_PASSWORD and SET_PASSWORD. Corresponds to the "category"
-	 * field in passwordsafe. If null, will be assumed to be the fully-qualified package
-	 * name of your application. If non-null (and not == the package name) the user should
-	 * be asked whether it's permissable to get or set this password.
-	 * 
-	 * <p>Constant Value: "org.openintents.extra.CATEGORY"</p>
-	 */
-	public static final String EXTRA_CATEGORY = "org.openintents.extra.CATEGORY";
+	public static final String EXTRA_UNIQUE_NAME = "org.openintents.extra.UNIQUE_NAME";
 
 	/**
 	 * Output parameter from GET_PASSWORD and optional input parameter to SET_PASSWORD.
@@ -114,4 +118,14 @@ public class CryptoIntents {
 	 * <p>Constant Value: "org.openintents.extra.PASSWORD"</p>
 	 */
 	public static final String EXTRA_PASSWORD = "org.openintents.extra.PASSWORD";
+
+	/**
+	 * Whether to prompt for the password if the service is not running yet.
+	 * 
+	 * Default value is 'true'. Set to 'false' if you want to suppress prompting for
+	 * a password.
+	 * 
+	 * <p>Constant Value: "org.openintents.extra.PROMPT"</p>
+	 */
+	public static final String EXTRA_PROMPT = "org.openintents.extra.PROMPT";
 }

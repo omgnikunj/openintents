@@ -38,6 +38,8 @@
 	<string name="title_notes_list">OI Notepad</string>   
 	<string name="title_note">Note</string>  
 	<string name="title_edit_title">Note title:</string>  
+    <string name="title_create_file">%s (new note)</string>
+    <string name="title_edit_file">%s (edit note)</string>
 	
 	<string name="app_name">OI Notepad</string>  
 	
@@ -52,13 +54,35 @@
 	<string name="email_not_available">No application available for sending.</string>
 	
 	<string name="encrypting_note">Encrypting note</string>
+	<string name="encrypted">Encrypted</string>
 	<string name="menu_encrypt">Encrypt</string>
 	<string name="menu_decrypt">Decrypt</string>
+	<string name="menu_undo_encryption">Undo encryption</string>
 	<string name="menu_do_not_encrypt">Do not encrypt</string>
 	<string name="already_encrypted">Already encrypted.</string>
+	<string name="not_encrypted">Not encrypted.</string>
 	<string name="encryption_failed">Encryption failed.</string>
 	<string name="decryption_failed">Decryption failed.</string>
 
+	<string name="menu_edit_tags">Edit tags</string>
+    <string name="dropdown_hint">Touch to see list</string>
+    <string name="tags_hint">Enter tags, separated by comma</string>
+    
+    <string name="menu_save_to_sdcard">Save to SD card</string>
+    <string name="menu_open_from_sdcard">Open from SD card</string>
+    <string name="filename">File name</string>
+    <string name="save">Save</string>
+    <string name="open">Open</string>
+    <string name="error_writing_file">Error while writing file</string>
+    <string name="error_reading_file">Error while reading file</string>
+    <string name="file_not_found">File not found</string>
+    <string name="note_saved">Note saved</string>
+    
+    <!-- File Manager -->
+    <string name="filemanager_not_available">No compatible file manager is available.</string>
+    <string name="filemanager_get_oi_filemanager">Get OI File Manager</string>
+    <string name="filemanager_market_uri">market://search?q=pname:org.openintents.filemanager</string>
+	
 	<!-- About -->
 	<string name="about">About</string>
 	<string name="about_title">About %s</string>

@@ -22,32 +22,36 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       package="org.openintents.about"
-      android:versionCode="2"
-      android:versionName="0.1.1">
-    <application android:icon="@drawable/icon" android:label="@string/app_name">
-        <meta-data android:name="org.openintents.updatechecker.UPDATE_URL"
-                       android:value="@string/version_file_url" />
+      android:versionCode="3"
+      android:versionName="1.0.0">
+      <!-- History:
+        1.0.0 [3]: Jan ?, 2009 -->
+    <application android:icon="@drawable/ic_menu_info_details" android:label="@string/app_name">
         <meta-data android:name="org.openintents.metadata.COMMENTS"
                        android:value="@string/about_comments" />
         <meta-data android:name="org.openintents.metadata.COPYRIGHT"
                        android:value="@string/about_copyright" />
         <meta-data android:name="org.openintents.metadata.AUTHORS"
-                       android:value="@array/about_authors" />
+                       android:resource="@array/about_authors" />
         <meta-data android:name="org.openintents.metadata.DOCUMENTERS"
-                       android:value="@array/about_documenters" />
+                       android:resource="@array/about_documenters" />
         <meta-data android:name="org.openintents.metadata.TRANSLATORS"
-                       android:value="@array/about_translators" />
+                       android:resource="@array/about_translators" />
         <meta-data android:name="org.openintents.metadata.ARTISTS"
-                       android:value="@array/about_artists" />
+                       android:resource="@array/about_artists" />
         <meta-data android:name="org.openintents.metadata.WEBSITE_LABEL"
                        android:value="@string/about_website_label" />
         <meta-data android:name="org.openintents.metadata.WEBSITE_URL"
                        android:value="@string/about_website_url" />
-        <!-- TODO add LICENSE and WRAP_LICENSE meta-tags -->
+        <meta-data android:name="org.openintents.metadata.LICENSE"
+                       android:resource="@raw/license_short" />
+        <meta-data android:name="org.openintents.metadata.EMAIL"
+                       android:value="@string/about_email" />
         
-        <activity android:name=".About" android:screenOrientation="sensor"
+        <activity android:name=".About"
                   android:label="@string/about_activity_name"
-                  android:launchMode="singleTop">
+                  >
+                  <!-- android:launchMode="singleTop" android:screenOrientation="sensor" -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.MONKEY" />

@@ -23,15 +23,24 @@
 
 package org.openintents.notepad;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
 import org.openintents.intents.CryptoIntents;
 import org.openintents.notepad.NotePad.Notes;
 import org.openintents.notepad.crypto.EncryptActivity;
 import org.openintents.notepad.util.ExtractTitle;
+import org.openintents.notepad.util.FileUriUtils;
 import org.openintents.util.MenuIntentOptionsWithIcons;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -45,6 +54,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Window;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -78,12 +88,14 @@ public class NoteEditor extends Activity {
     private static final int MENU_DISCARD = Menu.FIRST + 1;
     private static final int MENU_DELETE = Menu.FIRST + 2;
     private static final int MENU_ENCRYPT = Menu.FIRST + 3;
+	private static final int MENU_UNENCRYPT = Menu.FIRST + 4;
 
 	private static final int REQUEST_CODE_DECRYPT = 2;
 
     // The different distinct states the activity can be run in.
     private static final int STATE_EDIT = 0;
     private static final int STATE_INSERT = 1;
+    //private static final int STATE_NOTE_FROM_SDCARD = 2;
 
     private int mState;
     private boolean mNoteOnly = false;
@@ -93,6 +105,8 @@ public class NoteEditor extends Activity {
     private String mOriginalContent;
     
     private String mDecryptedText;
+    
+    private String mFilename;
 
     /**
      * A custom EditText that draws lines between each line of text that is displayed.
@@ -142,6 +156,57 @@ public class NoteEditor extends Activity {
             // Requested to edit: set that state, and the data being edited.
             mState = STATE_EDIT;
             mUri = intent.getData();
+
+            if (mUri.getScheme().equals("file")) {
+            	// Load the file into a new note.
+            	
+            	mFilename = FileUriUtils.getFilename(mUri);
+            	
+            	String text = readFile(FileUriUtils.getFile(mUri));
+            	
+            	if (text == null) {
+            		Log.e(TAG, "Error reading file");
+                    finish();
+                    return;
+            	}
+            	
+            	// Let's check whether the exactly same note already exists or not:
+            	Cursor c = getContentResolver().query(Notes.CONTENT_URI, 
+            			new String[] {Notes._ID},
+            			Notes.NOTE + " = ?", new String[] {text}, null);
+            	if (c != null && c.getCount() > 0) {
+            		// Same note exists already:
+            		c.moveToFirst();
+            		long id = c.getLong(0);
+            		mUri = ContentUris.withAppendedId(Notes.CONTENT_URI, id);
+            	} else {
+	            	
+	            	// Add new note
+	            	// Requested to insert: set that state, and create a new entry
+	                // in the container.
+	                mState = STATE_INSERT;
+	                ContentValues values = new ContentValues();
+	                values.put(Notes.NOTE, text);
+	                mUri = getContentResolver().insert(Notes.CONTENT_URI, values);
+	                intent.setAction(Intent.ACTION_EDIT);
+	                intent.setData(mUri);
+	                setIntent(intent);
+	
+	                // If we were unable to create a new note, then just finish
+	                // this activity.  A RESULT_CANCELED will be sent back to the
+	                // original activity if they requested a result.
+	                if (mUri == null) {
+	                    Log.e(TAG, "Failed to insert new note into " + getIntent().getData());
+	                    finish();
+	                    return;
+	                }
+	
+	                // The new entry was created, so assume all will end well and
+	                // set the result to be returned.
+	                //setResult(RESULT_OK, (new Intent()).setAction(mUri.toString()));
+	                setResult(RESULT_OK, intent);
+            	}
+        	}
         } else if (Intent.ACTION_INSERT.equals(action)) {
             // Requested to insert: set that state, and create a new entry
             // in the container.
@@ -162,7 +227,8 @@ public class NoteEditor extends Activity {
 
             // The new entry was created, so assume all will end well and
             // set the result to be returned.
-            setResult(RESULT_OK, (new Intent()).setAction(mUri.toString()));
+            //setResult(RESULT_OK, (new Intent()).setAction(mUri.toString()));
+            setResult(RESULT_OK, intent);
 
         } else {
             // Whoops, unknown action!  Bail.
@@ -171,11 +237,14 @@ public class NoteEditor extends Activity {
             return;
         }
 
+        requestWindowFeature(Window.FEATURE_RIGHT_ICON);
+        
         // Set the layout for this activity.  You can find it in res/layout/note_editor.xml
         setContentView(R.layout.note_editor);
         
         // The text view for our note, identified by its ID in the XML file.
         mText = (EditText) findViewById(R.id.note);
+        
 
         // Get the note!
         mCursor = managedQuery(mUri, PROJECTION, null, null, null);
@@ -186,6 +255,51 @@ public class NoteEditor extends Activity {
             mOriginalContent = savedInstanceState.getString(ORIGINAL_CONTENT);
             mState = savedInstanceState.getInt(ORIGINAL_STATE);
         }
+    }
+    
+    public String readFile(File file) {
+
+        FileInputStream fis = null;
+        BufferedInputStream bis = null;
+        DataInputStream dis = null;
+        StringBuffer sb = new StringBuffer();
+
+        try {
+          fis = new FileInputStream(file);
+
+          // Here BufferedInputStream is added for fast reading.
+          bis = new BufferedInputStream(fis);
+          dis = new DataInputStream(bis);
+
+          // dis.available() returns 0 if the file does not have more lines.
+          while (dis.available() != 0) {
+
+          // this statement reads the line from the file and print it to
+            // the console.
+        	  sb.append(dis.readLine());
+        	  if (dis.available() != 0) {
+        		  sb.append("\n");
+        	  }
+          }
+
+          // dispose all the resources after using them.
+          fis.close();
+          bis.close();
+          dis.close();
+
+        } catch (FileNotFoundException e) {
+        	Log.e(TAG, "File not found", e);
+			Toast.makeText(this, R.string.file_not_found,
+					Toast.LENGTH_SHORT).show();
+			return null;
+        } catch (IOException e) {
+        	Log.e(TAG, "File not found", e);
+			Toast.makeText(this, R.string.error_reading_file,
+					Toast.LENGTH_SHORT).show();
+			return null;
+        }
+        
+        return sb.toString();
     }
 
     @Override
@@ -201,10 +315,18 @@ public class NoteEditor extends Activity {
             mCursor.moveToFirst();
 
             // Modify our overall title depending on the mode we are running in.
-            if (mState == STATE_EDIT) {
-                setTitle(getText(R.string.title_edit));
-            } else if (mState == STATE_INSERT) {
-                setTitle(getText(R.string.title_create));
+            if (mFilename == null) {
+	            if (mState == STATE_EDIT) {
+	                setTitle(getText(R.string.title_edit));
+	            } else if (mState == STATE_INSERT) {
+	                setTitle(getText(R.string.title_create));
+	            }
+            } else {
+            	if (mState == STATE_EDIT) {
+	                setTitle(getString(R.string.title_edit_file, mFilename));
+	            } else if (mState == STATE_INSERT) {
+	                setTitle(getString(R.string.title_create_file, mFilename));
+	            }
             }
 
             long id = mCursor.getLong(COLUMN_INDEX_ID);
@@ -223,6 +345,7 @@ public class NoteEditor extends Activity {
             	if (mDecryptedText != null) {
             		// Text had already been decrypted, use that:
             		mText.setTextKeepState(mDecryptedText);
+            		setFeatureDrawableResource(Window.FEATURE_RIGHT_ICON, android.R.drawable.ic_lock_idle_lock);
             	} else {
             	// Decrypt note
 	
@@ -235,9 +358,9 @@ public class NoteEditor extends Activity {
 	                	startActivityForResult(i, REQUEST_CODE_DECRYPT);
 	                } catch (ActivityNotFoundException e) {
 	        			Toast.makeText(this,
-	        					R.string.encryption_failed,
+	        					R.string.decryption_failed,
 	        					Toast.LENGTH_SHORT).show();
-	        			Log.e(TAG, "failed to invoke encrypt");
+	        			Log.e(TAG, "failed to invoke decrypt");
 	                }
             	}
             }
@@ -272,6 +395,8 @@ public class NoteEditor extends Activity {
         // to do this if only editing.
         if (mCursor != null) {
 
+        	mCursor.moveToFirst();
+        	
             long encrypted = mCursor.getLong(COLUMN_INDEX_ENCRYPTED);
             
             if (encrypted == 0) {
@@ -330,9 +455,30 @@ public class NoteEditor extends Activity {
         String title = ExtractTitle.extractTitle(text);
         
 		Intent i = new Intent(this, EncryptActivity.class);
-		i.putExtra(CryptoIntents.EXTRA_TEXT_ARRAY, new String[] {text, title});
+		i.putExtra(NotePadIntents.EXTRA_ACTION, CryptoIntents.ACTION_ENCRYPT);
+		i.putExtra(CryptoIntents.EXTRA_TEXT_ARRAY, EncryptActivity.getCryptoStringArray(text, title, null));
 		i.putExtra(NotePadIntents.EXTRA_URI, mUri.toString());
 		startActivity(i);
+	}
+	
+	/**
+	 * Unencrypt the current note.
+	 * @param text
+	 */
+	private void unencryptNote() {
+        String text = mText.getText().toString();
+        String title = ExtractTitle.extractTitle(text);
+        
+        ContentValues values = new ContentValues();
+        values.put(Notes.MODIFIED_DATE, System.currentTimeMillis());
+        values.put(Notes.TITLE, title);
+        values.put(Notes.NOTE, text);
+       	values.put(Notes.ENCRYPTED, 0);
+        
+        getContentResolver().update(mUri, values, null, null);
+        mCursor.requery();
+        
+		setFeatureDrawable(Window.FEATURE_RIGHT_ICON, null);
 	}
 
     @Override
@@ -351,7 +497,11 @@ public class NoteEditor extends Activity {
         menu.add(1, MENU_ENCRYPT, 0, R.string.menu_encrypt)
                 .setShortcut('0', 'e')
                 .setIcon(android.R.drawable.ic_lock_lock); // TODO: better icon
-            
+
+        menu.add(1, MENU_UNENCRYPT, 0, R.string.menu_undo_encryption)
+                .setShortcut('0', 'e')
+                .setIcon(android.R.drawable.ic_lock_lock); // TODO: better icon
+        
         menu.add(1, MENU_DELETE, 0, R.string.menu_delete)
             .setShortcut('1', 'd')
             .setIcon(android.R.drawable.ic_menu_delete);
@@ -405,6 +555,13 @@ public class NoteEditor extends Activity {
     	boolean contentChanged = !mOriginalContent.equals(mText.getText().toString());
     	menu.setGroupVisible(0, contentChanged);
     	
+    	mCursor.moveToFirst();
+    	long encrypted = mCursor.getLong(COLUMN_INDEX_ENCRYPTED);
+    	boolean showEnrypt = (encrypted == 0);
+    	
+    	menu.findItem(MENU_ENCRYPT).setVisible(showEnrypt);
+    	menu.findItem(MENU_UNENCRYPT).setVisible(!showEnrypt);
+    	
 		return super.onPrepareOptionsMenu(menu);
 	}
 
@@ -424,6 +581,9 @@ public class NoteEditor extends Activity {
             break;
         case MENU_ENCRYPT:
         	encryptNote();
+        	break;
+        case MENU_UNENCRYPT:
+        	unencryptNote();
         	break;
         }
         return super.onOptionsItemSelected(item);
@@ -493,7 +653,7 @@ public class NoteEditor extends Activity {
     			if (id == -1) {
         	    	Log.i(TAG, "Wrong extra id");
     				Toast.makeText(this,
-        					"Encrypted information incomplete",
+        					"Decrypted information incomplete",
         					Toast.LENGTH_SHORT).show();
 
             		finish();
