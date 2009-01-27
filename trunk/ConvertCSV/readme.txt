@@ -21,10 +21,18 @@ To obtain the current release, visit
   http://www.openintents.org
 
 ---------------------------------------------------------
-release: 1.0.1
+release: 1.0.2
 date: 2009-??
 
+- Add progress bar during conversion.
+
+---------------------------------------------------------
+release: 1.0.1
+date: 2009-01-19
+
 - Fix line feed problem with Palm CSV Windows files.
+- Add support for new fields in NotePad 1.1.0.
+- Prepare for OI Notepad and OI Shopping list permissions.
 
 ---------------------------------------------------------
 release: 1.0.0

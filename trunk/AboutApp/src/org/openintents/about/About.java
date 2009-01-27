@@ -403,6 +403,9 @@ public class About extends TabActivity {
 		}
 		
         mProgramNameAndVersionText.setText(combined);
+        
+        String title = getString(R.string.about_activity_name_extended, applicationlabel);
+        setTitle(title);
 	}
 
 	/**
@@ -825,8 +828,17 @@ public class About extends TabActivity {
 	protected void showAboutDialog() {
 		Intent intent = new Intent(AboutIntents.ACTION_SHOW_ABOUT_DIALOG);
 		
+		//Create string array of translators from translated string from Launchpad or (for English) from the array.
+		String translatorsString=getString(R.string.about_translators);
+		if(translatorsString.equals("translator-credits")){
+			intent.putExtra(AboutIntents.EXTRA_TRANSLATORS, getResources().getStringArray(R.array.about_translators));
+		}else{
+			String[] translatorsArray=translatorsString.replaceFirst("Launchpad Contributions: ", "").split("(; )|(;)");
+			intent.putExtra(AboutIntents.EXTRA_TRANSLATORS, translatorsArray);
+		}
+		
 		// Start about activity. Needs to be "forResult" with requestCode>=0
-		// so the the package name is passed properly.
+		// so that the package name is passed properly.
 		//
 		// The details are obtained from the Manifest through
 		// default tags and metadata.

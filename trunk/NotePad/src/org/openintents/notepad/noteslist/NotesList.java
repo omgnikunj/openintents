@@ -28,14 +28,17 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import org.openintents.distribution.AboutActivity;
+import org.openintents.distribution.AboutDialog;
 import org.openintents.distribution.EulaActivity;
+import org.openintents.distribution.GetFromMarketDialog;
+import org.openintents.distribution.RD;
 import org.openintents.distribution.UpdateMenu;
 import org.openintents.intents.CryptoIntents;
 import org.openintents.notepad.NoteEditor;
 import org.openintents.notepad.NotePad;
 import org.openintents.notepad.NotePadIntents;
 import org.openintents.notepad.NotePadProvider;
+import org.openintents.notepad.PreferenceActivity;
 import org.openintents.notepad.R;
 import org.openintents.notepad.NotePad.Notes;
 import org.openintents.notepad.crypto.EncryptActivity;
@@ -60,6 +63,7 @@ import android.os.Handler;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.ContextMenu;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -90,6 +94,7 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 	private static final int MENU_ITEM_EDIT_TAGS = Menu.FIRST + 7;
 	private static final int MENU_ITEM_SAVE = Menu.FIRST + 8;
 	private static final int MENU_OPEN = Menu.FIRST + 9;
+ 	private static final int MENU_SETTINGS = Menu.FIRST + 10;
 	
 	private static final String BUNDLE_LAST_FILTER = "last_filter";
 	
@@ -103,7 +108,9 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 	private static final int REQUEST_CODE_OPEN = 5;
 	private static final int REQUEST_CODE_SAVE = 6;
 	
-	private static final int DIALOG_ID_TAGS = 1;
+	private static final int DIALOG_TAGS = 1;
+	private static final int DIALOG_ABOUT = 2;
+	private static final int DIALOG_GET_FROM_MARKET = 3;
 	
 	private final int DECRYPT_DELAY = 100;
 	
@@ -188,6 +195,8 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 	@Override
 	protected void onResume() {
 		super.onResume();
+
+		NotesListCursor.mSuspendQueries = false;
 		
 		if (mAdapter == null) {
 			// Perform a managed query. The Activity will handle closing and
@@ -231,6 +240,9 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 		IntentFilter filter = new IntentFilter();
 		filter.addAction(CryptoIntents.ACTION_CRYPTO_LOGGED_OUT);
 		registerReceiver(mBroadcastReceiver, filter);
+		
+
+        // getListView().setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
 	}
 
 	@Override
@@ -251,6 +263,9 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 		
 		// After unregistering broadcastreceiver, the logged in state is not clear.
 		NotesListCursor.mLoggedIn = false;
+		// No need wasting a lot of time doing queries when external applications change the
+		// database - we requery in onResume anyway.
+		NotesListCursor.mSuspendQueries = true;
 		mDecryptionFailed = false;
 		mDecryptionSucceeded = false;
 	}
@@ -286,6 +301,9 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 				'o').setIcon(R.drawable.ic_menu_folder);
 
 		UpdateMenu.addUpdateMenu(this, menu, 0, MENU_UPDATE, 0, R.string.update);
+
+		menu.add(0, MENU_SETTINGS, 0, R.string.settings).setIcon(
+				android.R.drawable.ic_menu_preferences).setShortcut('9', 's');
 		
 		menu.add(0, MENU_ABOUT, 0, R.string.about).setIcon(
 				android.R.drawable.ic_menu_info_details).setShortcut('0', 'a');
@@ -366,6 +384,9 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 			return true;
 		case MENU_UPDATE:
 			UpdateMenu.showUpdateBox(this);
+			return true;
+		case MENU_SETTINGS:
+			showNotesListSettings();
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
@@ -473,7 +494,7 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 
 		Cursor c = getContentResolver().query(noteUri,
 				new String[] { NotePad.Notes.TITLE, NotePad.Notes.NOTE }, null,
-				null, Notes.DEFAULT_SORT_ORDER);
+				null, PreferenceActivity.getSortOrderFromPrefs(this));
 
 		String title = "";
 		String content = getString(R.string.empty_note);
@@ -514,7 +535,7 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 
 		Cursor c = getContentResolver().query(noteUri,
 				new String[] { NotePad.Notes.TITLE, NotePad.Notes.NOTE, NotePad.Notes.TAGS, NotePad.Notes.ENCRYPTED }, null,
-				null, Notes.DEFAULT_SORT_ORDER);
+				null, PreferenceActivity.getSortOrderFromPrefs(this));
 
 		String title = "";
 		String text = getString(R.string.empty_note);
@@ -550,7 +571,7 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 	}
 	
 	private void editTags() {
-		showDialog(DIALOG_ID_TAGS);
+		showDialog(DIALOG_TAGS);
 	}
 	
 	private void saveToSdCard() {
@@ -575,9 +596,15 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
     }
     
 	private void showAboutBox() {
-		startActivity(new Intent(this, AboutActivity.class));
+		//startActivity(new Intent(this, AboutActivity.class));
+		AboutDialog.showDialogOrStartActivity(this, DIALOG_ABOUT);
 	}
 
+	private void showNotesListSettings() {
+		startActivity(new Intent(this, PreferenceActivity.class));
+	}
+	
+	
     public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount,
             int totalItemCount) {
     }
@@ -622,14 +649,21 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
     }
 
     public void decryptDelayed() {
+    	// Poll the next string that has not been decrypted yet.
     	String encryptedString = NotesListCursor.getNextEncryptedString();
     	if (encryptedString != null) {
             setProgressBarIndeterminateVisibility(true);
         	decryptDelayed(encryptedString, DECRYPT_DELAY);
     	} else if (!mDecryptionFailed && !mDecryptionSucceeded) {
-    		// If neither failed not succeeded yet, we send a test intent.
-            setProgressBarIndeterminateVisibility(true);
-        	decryptDelayed(null, 0);
+    		// If neither failed nor succeeded yet, we send a test intent.
+    		// This is to ensure that the service is still running
+    		// even if we may serve all decrypted strings from the cache.
+    		NotesListCursor nlc = (NotesListCursor) mAdapter.getCursor();
+    		if (nlc.mContainsEncryptedStrings) {
+    			// Of course only if there is at least one encrypted string.
+	            setProgressBarIndeterminateVisibility(true);
+	        	decryptDelayed(null, 0);
+    		}
     	} else {
     		// Done with decryption
             setProgressBarIndeterminateVisibility(false);
@@ -639,7 +673,6 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
     public void decryptDelayed(final String encryptedTitle, long delayMillis) {
 		mHandler.postDelayed(new Runnable() {
 			
-			@Override
 			public void run() {
 				decryptTitle(encryptedTitle);
 			}
@@ -676,8 +709,16 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 	protected Dialog onCreateDialog(int id) {
 
 		switch (id) {
-		case DIALOG_ID_TAGS:
+		case DIALOG_TAGS:
 			return new TagsDialog(this);
+		case DIALOG_ABOUT:
+			return new AboutDialog(this);
+		case DIALOG_GET_FROM_MARKET:
+			return new GetFromMarketDialog(this, 
+					RD.string.safe_not_available_decrypt,
+					RD.string.safe_get_oi_filemanager,
+					RD.string.safe_market_uri,
+					RD.string.safe_developer_uri);
 		}
 		return null;
 	}
@@ -687,7 +728,7 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 		FilenameDialog fd;
 		
 		switch (id) {
-		case DIALOG_ID_TAGS:
+		case DIALOG_TAGS:
 			TagsDialog d = (TagsDialog) dialog;
 
 			Uri uri = ContentUris.withAppendedId(getIntent().getData(), mContextMenuInfo.id);
@@ -701,6 +742,8 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 			d.setTags(tags);
 			d.setEncrypted(encrypted);
 			
+			break;
+		case DIALOG_ABOUT:
 			break;
 		}
 	}
@@ -738,10 +781,10 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 		        } catch (ActivityNotFoundException e) {
 		        	mDecryptionFailed = true;
 		        	
-					Toast.makeText(this,
+					/*Toast.makeText(this,
 							R.string.decryption_failed,
-							Toast.LENGTH_SHORT).show();
-					
+							Toast.LENGTH_SHORT).show();*/
+					showDialog(DIALOG_GET_FROM_MARKET);
 					Log.e(TAG, "failed to invoke encrypt");
 		        }
 		        return;
@@ -756,6 +799,7 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 			// The caller is waiting for us to return a note selected by
 			// the user. The have clicked on one, so return it now.
 			setResult(RESULT_OK, new Intent().setData(uri));
+			finish ();
 		} else {
 			// Launch activity to view/edit the currently selected item
 			startActivity(new Intent(Intent.ACTION_EDIT, uri));
@@ -918,5 +962,20 @@ public class NotesList extends ListActivity implements ListView.OnScrollListener
 		
 	};
 
-
+	/*
+	
+	// Note: onKeyDown is never called, because the 
+	//       list filter consumes the event before.
+	
+	@Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DEL) {
+        	// Delete the currently selected item (if any).
+        	Log.i(TAG, "Selected item: " + getSelectedItemId());
+        	
+        	return true;
+        }
+        return false;
+    }
+    */
 }

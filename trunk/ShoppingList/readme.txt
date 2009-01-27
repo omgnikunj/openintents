@@ -23,9 +23,14 @@ To obtain the current release, visit
 
 ---------------------------------------------------------
 release: 1.0.3
-date: 2008-??-??
+date: 2009-01-19
 
 - preference for sorting and font size added
+- prepare for permissions to access shopping lists
+  (but don't activate them yet).
+- fix bug when opened through AnyCut from homepage.
+- create shortcut from home screen to arbitrary list.
+- support for OI About.
 
 ---------------------------------------------------------
 release: 1.0.2

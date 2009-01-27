@@ -19,7 +19,7 @@ package org.openintents.shopping;
 import java.util.List;
 
 import org.openintents.OpenIntents;
-import org.openintents.distribution.AboutActivity;
+import org.openintents.distribution.AboutDialog;
 import org.openintents.distribution.EulaActivity;
 import org.openintents.distribution.UpdateMenu;
 import org.openintents.provider.Alert;
@@ -35,13 +35,13 @@ import org.openintents.util.MenuIntentOptionsWithIcons;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.DialogInterface.OnCancelListener;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -72,6 +72,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListAdapter;
@@ -121,7 +122,7 @@ public class ShoppingActivity extends Activity { // implements
 
 	// TODO: Implement the following menu items
 	private static final int MENU_EDIT_LIST = Menu.FIRST + 12; // includes
-																// rename
+	// rename
 	private static final int MENU_SORT = Menu.FIRST + 13; // sort alphabetically
 	// or modified
 	private static final int MENU_PICK_ITEMS = Menu.FIRST + 14; // pick from
@@ -134,6 +135,9 @@ public class ShoppingActivity extends Activity { // implements
 	// shopping list
 	private static final int MENU_UPDATE = Menu.FIRST + 16;
 	private static final int MENU_PREFERENCES = Menu.FIRST + 17;
+	private static final int MENU_SEND = Menu.FIRST + 18;
+
+	private static final int DIALOG_ABOUT = 1;
 
 	/**
 	 * The main activity.
@@ -263,10 +267,6 @@ public class ShoppingActivity extends Activity { // implements
 	public static final int mMarkStrikethrough = 2;
 	public static final int mMarkAddtext = 3;
 
-	private static final String PREFS_SORTORDER = "sortorder";
-
-	private static final String PREFS_FONTSIZE = "fontsize";
-
 	// GTalk --------------------------
 	private GTalkSender mGTalkSender;
 
@@ -339,7 +339,7 @@ public class ShoppingActivity extends Activity { // implements
 			if (Shopping.ITEM_TYPE.equals(type)) {
 				mListUri = Shopping.getListForItem(intent.getData()
 						.getLastPathSegment());
-			} else {
+			} else if (intent.getData() != null) {
 				mListUri = intent.getData();
 			}
 
@@ -421,7 +421,8 @@ public class ShoppingActivity extends Activity { // implements
 
 		// Modify our overall title depending on the mode we are running in.
 		if (mState == STATE_MAIN || mState == STATE_VIEW_LIST) {
-			setTitle(getText(R.string.shopping_list));
+			// App name is default
+			// setTitle(getText(R.string.app_name));
 		} else if ((mState == STATE_PICK_ITEM)
 				|| (mState == STATE_GET_CONTENT_ITEM)) {
 			setTitle(getText(R.string.pick_item));
@@ -430,11 +431,15 @@ public class ShoppingActivity extends Activity { // implements
 
 		checkListLength();
 
+		setListTheme(loadListTheme());
+
 		if (!mUpdating) {
 			mUpdating = true;
 			// mHandler.sendMessageDelayed(mHandler.obtainMessage(
 			// MESSAGE_UPDATE_CURSORS), mUpdateInterval);
 		}
+
+		// fillItems();
 
 		// TODO ???
 		/*
@@ -636,9 +641,24 @@ public class ShoppingActivity extends Activity { // implements
 			 * mListItems.setSelection(mListItems.getCount() -
 			 * NUMBER_OF_ELEMENTS_BELOW_MIDDLE); } ;
 			 */
-			mListItems.setSelection(mListItems.getCount() - 1);
-
+			// mListItems.setSelection(mListItems.getCount() - 1);
 			// mListItems.getChildAt(mListItems.getCount()-1).setSelected(true);
+			// Set the item that we have just selected:
+			// Get position of ID:
+			mCursorItems.moveToPosition(-1);
+			while (mCursorItems.moveToNext()) {
+				if (mCursorItems.getLong(mStringItemsITEMID) == itemId) {
+					int pos = mCursorItems.getPosition();
+					if (pos > 0) {
+						// Set selection one before, so that the item is fully
+						// visible.
+						mListItems.setSelection(pos - 1);
+					} else {
+						mListItems.setSelection(pos);
+					}
+					break;
+				}
+			}
 
 			// If we share items, send this item also to other lists:
 			// TODO ??
@@ -740,8 +760,12 @@ public class ShoppingActivity extends Activity { // implements
 		menu.add(0, MENU_THEME, 0, R.string.theme).setIcon(
 				android.R.drawable.ic_menu_manage).setShortcut('5', 't');
 
-		menu.add(0, MENU_PREFERENCES, 0, R.string.preferences).setIcon(android.R.drawable.ic_menu_preferences);
-		
+		menu.add(0, MENU_PREFERENCES, 0, R.string.preferences).setIcon(
+				android.R.drawable.ic_menu_preferences);
+
+		menu.add(0, MENU_SEND, 0, R.string.send).setIcon(
+				android.R.drawable.ic_menu_send);
+
 		if (addLocationAlertPossible()) {
 			menu
 					.add(0, MENU_ADD_LOCATION_ALERT, 0,
@@ -937,6 +961,8 @@ public class ShoppingActivity extends Activity { // implements
 			intent = new Intent(this, PreferenceActivity.class);
 			startActivity(intent);
 			return true;
+		case MENU_SEND:
+			sendList();
 			/*
 			 * case MENU_SETTINGS: Intent intent = new
 			 * Intent(Intent.MAIN_ACTION, Hardware.Preferences.CONTENT_URI);
@@ -1212,6 +1238,39 @@ public class ShoppingActivity extends Activity { // implements
 		return true;
 	}
 
+	private void sendList() {
+		if (mListItems.getAdapter() instanceof CursorAdapter) {
+			StringBuffer sb = new StringBuffer();
+			for (int i = 0; i < mListItems.getAdapter().getCount(); i++) {
+				Cursor item = (Cursor) mListItems.getAdapter().getItem(i);
+				if (item.getLong(mStringItemsSTATUS) == Shopping.Status.BOUGHT) {
+					sb.append("[X]");
+				} else {
+					sb.append("[ ]");
+				}
+				sb.append(item.getString(mStringItemsITEMNAME));
+				sb.append("\n");
+			}
+			
+			Intent i = new Intent();
+			i.setAction(Intent.ACTION_SEND);
+			i.setType("text/plain");
+			i.putExtra(Intent.EXTRA_SUBJECT, ((Cursor)mSpinnerListFilter.getSelectedItem()).getString(mStringListFilterNAME));
+			i.putExtra(Intent.EXTRA_TEXT, sb.toString());
+
+			try {
+				startActivity(Intent.createChooser(i, getString(R.string.send)));
+			} catch (ActivityNotFoundException e) {
+				Toast.makeText(this, R.string.email_not_available,
+						Toast.LENGTH_SHORT).show();
+				Log.e(TAG, "Email client not installed");
+			}
+		} else {
+			Toast.makeText(this, R.string.empty_list_not_sent, Toast.LENGTH_SHORT);
+		}
+
+	}
+
 	/**
 	 * Clean up the currently visible shopping list by removing items from list
 	 * that are marked BOUGHT.
@@ -1456,21 +1515,21 @@ public class ShoppingActivity extends Activity { // implements
 	 * @param themeId
 	 */
 	void setListTheme(int themeId) {
-		int textSize = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(PREFS_FONTSIZE, "2"));
+		int textSize = getDefaultTextSize();
 		switch (themeId) {
 		case 1:
 			mTypeface = null;
 			mUpperCaseFont = false;
 			mTextColor = 0xffffffff; // white
-			
-			if (textSize == 1){
+
+			if (textSize == 1) {
 				mTextSize = 18;
 			} else if (textSize == 2) {
-				mTextSize = 23;	
+				mTextSize = 23;
 			} else {
 				mTextSize = 28;
 			}
-			
+
 			mMarkTextColor = 0xffcccccc; // white gray
 			mMarkType = mMarkCheckbox;
 
@@ -1485,10 +1544,10 @@ public class ShoppingActivity extends Activity { // implements
 			mTypeface = mTypefaceHandwriting;
 			mUpperCaseFont = false;
 			mTextColor = 0xff000000; // black
-			if (textSize == 1){
+			if (textSize == 1) {
 				mTextSize = 15;
 			} else if (textSize == 2) {
-				mTextSize = 20;	
+				mTextSize = 20;
 			} else {
 				mTextSize = 25;
 			}
@@ -1510,10 +1569,10 @@ public class ShoppingActivity extends Activity { // implements
 			// Digital only supports upper case fonts.
 			mUpperCaseFont = true;
 			mTextColor = 0xffff0000; // red
-			if (textSize == 1){
+			if (textSize == 1) {
 				mTextSize = 21;
 			} else if (textSize == 2) {
-				mTextSize = 26;	
+				mTextSize = 26;
 			} else {
 				mTextSize = 31;
 			}
@@ -1535,6 +1594,15 @@ public class ShoppingActivity extends Activity { // implements
 		if (mCursorItems != null) {
 			mCursorItems.requery();
 		}
+	}
+
+	/**
+	 * @return
+	 */
+	private int getDefaultTextSize() {
+		return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(
+				this).getString(PreferenceActivity.PREFS_FONTSIZE,
+				PreferenceActivity.PREFS_FONTSIZE_DEFAULT));
 	}
 
 	/**
@@ -1620,8 +1688,29 @@ public class ShoppingActivity extends Activity { // implements
 	 * mSensorListener.setOnSensorListener(null); } }
 	 */
 
+	@Override
+	protected Dialog onCreateDialog(int id) {
+
+		switch (id) {
+		case DIALOG_ABOUT:
+			return new AboutDialog(this);
+		}
+		return null;
+
+	}
+
+	@Override
+	protected void onPrepareDialog(int id, Dialog dialog) {
+		super.onPrepareDialog(id, dialog);
+
+		switch (id) {
+		case DIALOG_ABOUT:
+			break;
+		}
+	}
+
 	private void showAboutBox() {
-		startActivity(new Intent(this, AboutActivity.class));
+		AboutDialog.showDialogOrStartActivity(this, DIALOG_ABOUT);
 	}
 
 	// /////////////////////////////////////////////////////
@@ -1707,7 +1796,8 @@ public class ShoppingActivity extends Activity { // implements
 		if (mCursorListFilter.getCount() < 1) {
 			// We have to create default shopping list:
 			// TODO Put the following string into resource my_shopping_list
-			long listId = Shopping.getList("My shopping list");
+			long listId = Shopping.getList(getText(R.string.my_shopping_list)
+					.toString());
 
 			// Check if insertion really worked. Otherwise
 			// we may end up in infinite recursion.
@@ -1801,8 +1891,9 @@ public class ShoppingActivity extends Activity { // implements
 			return;
 		}
 
-		String sortOrder = PreferenceManager.getDefaultSharedPreferences(this)
-				.getString(PREFS_SORTORDER, ContainsFull.DEFAULT_SORT_ORDER);
+		String sortOrder = PreferenceActivity.getSortOrderFromPrefs(this);
+		// Older default: ContainsFull.DEFAULT_SORT_ORDER
+
 		// Get a cursor for all items that are contained
 		// in currently selected shopping list.
 		mCursorItems = getContentResolver().query(ContainsFull.CONTENT_URI,
@@ -1820,10 +1911,17 @@ public class ShoppingActivity extends Activity { // implements
 			return;
 		}
 
+		int layout_row = R.layout.shopping_item_row;
+
+		int textSize = getDefaultTextSize();
+		if (textSize < 3) {
+			layout_row = R.layout.shopping_item_row_small;
+		}
+
 		ListAdapter adapter = new mSimpleCursorAdapter(
 				this,
 				// Use a template that displays a text view
-				R.layout.shopping_item_row,
+				layout_row,
 				// Give the cursor to the list adapter
 				mCursorItems,
 				// Map the IMAGE and NAME to...

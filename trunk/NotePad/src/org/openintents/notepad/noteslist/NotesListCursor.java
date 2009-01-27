@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.openintents.notepad.PreferenceActivity;
 import org.openintents.notepad.R;
 import org.openintents.notepad.NotePad.Notes;
 import org.openintents.notepad.util.OpenMatrixCursor;
@@ -20,7 +21,6 @@ import android.util.Log;
 public class NotesListCursor extends OpenMatrixCursor {
 
 	private static final String TAG = "NotesListCursorUtils";
-	
 	static final String TITLE_DECRYPTED = "title_decrypted";
 	static final String TAGS_DECRYPTED = "tags_decrypted";
 	
@@ -58,6 +58,9 @@ public class NotesListCursor extends OpenMatrixCursor {
 	
 	static boolean mLoggedIn = false;
 	
+	// If true, we will not requery if a change occurs.
+	static boolean mSuspendQueries = false;
+	
 	Context mContext;
 	Intent mIntent;
 	//OpenMatrixCursor mCursor;
@@ -81,12 +84,14 @@ public class NotesListCursor extends OpenMatrixCursor {
 	 */
 	public static List<String> mEncryptedStringList = Collections.synchronizedList(new LinkedList<String>());
 	
+	public boolean mContainsEncryptedStrings;
+	
 	public NotesListCursor(Context context, Intent intent) {
 		super(PROJECTION);
 		mContext = context;
 		mIntent = intent;
 		mCurrentFilter = null;
-		
+		mContainsEncryptedStrings = false;
 		
 	}
 	
@@ -103,8 +108,10 @@ public class NotesListCursor extends OpenMatrixCursor {
 		public void onChange(boolean selfChange) {
 			super.onChange(selfChange);
 			Log.i(TAG, "NoteListCursor changed" + selfChange);
-			
-			requery();
+
+			if (!mSuspendQueries) {
+				requery();
+			}
 		}
 		
 	};
@@ -129,7 +136,6 @@ public class NotesListCursor extends OpenMatrixCursor {
 		return cursor;
 	}
 	
-	
 	/** 
 	 * Return a query with decrypted information on the current cursor.
 	 * 
@@ -150,9 +156,9 @@ public class NotesListCursor extends OpenMatrixCursor {
 			mDbCursor.close();
 			mDbCursor = null;
 		}
-		
 		mDbCursor = mContext.getContentResolver().query(mIntent.getData(), PROJECTION_DB, 
-				null, null, Notes.DEFAULT_SORT_ORDER);
+				null, null, PreferenceActivity.getSortOrderFromPrefs(mContext));
+		
 
 		// Register content observer
 		mDbCursor.registerContentObserver(mContentObserver);
@@ -162,6 +168,7 @@ public class NotesListCursor extends OpenMatrixCursor {
 		//mCursor = new OpenMatrixCursor(PROJECTION, dbcursor.getCount());
 		
 		reset();
+		mContainsEncryptedStrings = false;
 		
 		String encryptedlabel = mContext.getString(R.string.encrypted);
 		
@@ -246,6 +253,10 @@ public class NotesListCursor extends OpenMatrixCursor {
 			if (addrow) {
 				if (tags == null) {
 					tags = "";
+				}
+				
+				if (encrypted != 0) {
+					mContainsEncryptedStrings = true;
 				}
 				
 				Object[] row = new Object[] {id, title, tags, encrypted, titleEncrypted, tagsEncrypted};
